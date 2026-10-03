@@ -3,9 +3,10 @@ import 'package:app/features/rooms/ui/room_time.dart';
 import 'package:flutter/material.dart';
 
 class MessageBubble extends StatelessWidget {
-  const MessageBubble({required this.message, super.key});
+  const MessageBubble({required this.message, this.onRetry, super.key});
 
   final ChatMessage message;
+  final VoidCallback? onRetry;
 
   @override
   Widget build(BuildContext context) {
@@ -59,6 +60,7 @@ class MessageBubble extends StatelessWidget {
                       _DeliveryIcon(
                         state: message.delivery,
                         color: foreground.withValues(alpha: 0.7),
+                        onRetry: onRetry,
                       ),
                     ],
                   ],
@@ -94,26 +96,34 @@ class _Content extends StatelessWidget {
 }
 
 class _DeliveryIcon extends StatelessWidget {
-  const _DeliveryIcon({required this.state, required this.color});
+  const _DeliveryIcon({
+    required this.state,
+    required this.color,
+    this.onRetry,
+  });
 
   final DeliveryState state;
   final Color color;
+  final VoidCallback? onRetry;
 
   @override
   Widget build(BuildContext context) {
+    final canRetry = state == DeliveryState.failed && onRetry != null;
     final (icon, tint, label) = switch (state) {
       DeliveryState.sending => (Icons.schedule, color, 'Enviando'),
       DeliveryState.sent => (Icons.done, color, 'Enviada'),
       DeliveryState.failed => (
         Icons.error_outline,
         Theme.of(context).colorScheme.error,
-        'Falhou',
+        canRetry ? 'Falhou. Toque para reenviar' : 'Falhou',
       ),
     };
 
+    final iconWidget = Icon(icon, size: 14, color: tint);
+
     return Tooltip(
       message: label,
-      child: Icon(icon, size: 14, color: tint),
+      child: canRetry ? InkWell(onTap: onRetry, child: iconWidget) : iconWidget,
     );
   }
 }

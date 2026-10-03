@@ -24,3 +24,21 @@ Stream<List<ChatMessage>> chatMessages(Ref ref, String roomId) async* {
   await ref.watch(openChatProvider(roomId).future);
   yield* ref.watch(chatRepositoryProvider).watchMessages(roomId);
 }
+
+@riverpod
+class MessageSender extends _$MessageSender {
+  @override
+  FutureOr<void> build() {}
+
+  Future<void> send(String roomId, String text) =>
+      _run(() => ref.read(chatRepositoryProvider).send(roomId, text));
+
+  Future<void> retry(String roomId, String messageId) =>
+      _run(() => ref.read(chatRepositoryProvider).retry(roomId, messageId));
+
+  Future<void> _run(Future<void> Function() action) async {
+    state = const AsyncLoading();
+    final result = await AsyncValue.guard(action);
+    if (ref.mounted) state = result;
+  }
+}

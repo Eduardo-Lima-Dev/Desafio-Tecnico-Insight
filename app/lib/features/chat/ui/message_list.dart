@@ -3,9 +3,10 @@ import 'package:app/features/chat/ui/message_bubble.dart';
 import 'package:flutter/material.dart';
 
 class MessageList extends StatelessWidget {
-  const MessageList({required this.messages, super.key});
+  const MessageList({required this.messages, this.onRetry, super.key});
 
   final List<ChatMessage> messages;
+  final ValueChanged<ChatMessage>? onRetry;
 
   @override
   Widget build(BuildContext context) {
@@ -19,7 +20,11 @@ class MessageList extends StatelessWidget {
       itemCount: messages.length,
       itemBuilder: (context, index) {
         final message = messages[messages.length - 1 - index];
-        return MessageBubble(key: ValueKey(message.id), message: message);
+        return MessageBubble(
+          key: ValueKey(message.id),
+          message: message,
+          onRetry: onRetry == null ? null : () => onRetry!(message),
+        );
       },
     );
   }

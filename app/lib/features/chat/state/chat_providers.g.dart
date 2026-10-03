@@ -195,3 +195,47 @@ final class ChatMessagesFamily extends $Family
   @override
   String toString() => r'chatMessagesProvider';
 }
+
+@ProviderFor(MessageSender)
+final messageSenderProvider = MessageSenderProvider._();
+
+final class MessageSenderProvider
+    extends $AsyncNotifierProvider<MessageSender, void> {
+  MessageSenderProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'messageSenderProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$messageSenderHash();
+
+  @$internal
+  @override
+  MessageSender create() => MessageSender();
+}
+
+String _$messageSenderHash() => r'54e74414fddb3e388928b743ada38c253124c6c6';
+
+abstract class _$MessageSender extends $AsyncNotifier<void> {
+  FutureOr<void> build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<AsyncValue<void>, void>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<AsyncValue<void>, void>,
+              AsyncValue<void>,
+              Object?,
+              Object?
+            >;
+    return element.handleCreate(ref, build);
+  }
+}

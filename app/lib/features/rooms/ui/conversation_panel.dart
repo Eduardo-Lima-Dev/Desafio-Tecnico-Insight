@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:app/features/chat/state/chat_providers.dart';
+import 'package:app/features/chat/ui/message_composer.dart';
 import 'package:app/features/chat/ui/message_list.dart';
 import 'package:app/features/rooms/state/rooms_providers.dart';
 import 'package:app/features/rooms/ui/room_avatar.dart';
@@ -75,9 +78,18 @@ class ConversationPanel extends ConsumerWidget {
                 ),
               ),
             ),
-            data: (items) => MessageList(messages: items),
+            data: (items) => MessageList(
+              messages: items,
+              onRetry: (message) => unawaited(
+                ref
+                    .read(messageSenderProvider.notifier)
+                    .retry(room.id, message.id),
+              ),
+            ),
           ),
         ),
+        const Divider(height: 1),
+        MessageComposer(key: ValueKey(room.id), roomId: room.id),
       ],
     );
   }

@@ -6,4 +6,8 @@ abstract interface class ChatRepository {
   Future<void> close(String roomId);
 
   Stream<List<ChatMessage>> watchMessages(String roomId);
+
+  Future<void> send(String roomId, String text);
+
+  Future<void> retry(String roomId, String messageId);
 }

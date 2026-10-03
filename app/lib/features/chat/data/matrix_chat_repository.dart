@@ -27,6 +27,24 @@ class MatrixChatRepository implements ChatRepository {
       .watchMessages(roomId: roomId)
       .map((messages) => messages.map(_toMessage).toList());
 
+  @override
+  Future<void> send(String roomId, String text) async {
+    try {
+      await rust.sendMessage(roomId: roomId, text: text);
+    } on Object catch (error) {
+      throw _toFailure(error);
+    }
+  }
+
+  @override
+  Future<void> retry(String roomId, String messageId) async {
+    try {
+      await rust.retrySend(roomId: roomId, messageId: messageId);
+    } on Object catch (error) {
+      throw _toFailure(error);
+    }
+  }
+
   ChatMessage _toMessage(rust.ChatMessage message) => ChatMessage(
     id: message.id,
     senderId: message.senderId,
@@ -51,6 +69,7 @@ class MatrixChatRepository implements ChatRepository {
       return switch (error) {
         rust.ChatError.notLoggedIn => SessionFailure.sessionExpired,
         rust.ChatError.roomNotFound ||
+        rust.ChatError.messageNotFound ||
         rust.ChatError.failed => SessionFailure.unknown,
       };
     }
