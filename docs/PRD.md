@@ -40,28 +40,31 @@ Este documento descreve os requisitos funcionais, não funcionais, a arquitetura
 | RF-03 | Após login bem-sucedido, a sessão é persistida de forma segura.                                        |
 | RF-04 | Ao abrir o app, a sessão salva é restaurada automaticamente, sem pedir login de novo.                  |
 | RF-05 | Se a sessão restaurada for inválida ou expirada, o app limpa a sessão e volta ao login com um aviso.   |
-| RF-06 | O logout invalida a sessão no homeserver, apaga os dados locais e volta ao login.                      |
+| RF-06 | O logout invalida a sessão no homeserver, apaga os dados locais e volta ao login. O botão Sair, com ícone de logout, fica no rodapé da lista de salas, ao lado do usuário logado. |
+| RF-21 | O login oferece a opção "Salvar servidor": se marcada, o servidor informado é lembrado e já vem preenchido no próximo login. Usuário e senha nunca são salvos. |
 
 ### 3.2. Salas
 
 | ID    | Requisito                                                                                      |
 | ----- | ---------------------------------------------------------------------------------------------- |
-| RF-07 | O app lista as salas em que o usuário participa, com nome e última mensagem.                   |
+| RF-07 | O app lista as salas em que o usuário participa, com avatar, nome e última mensagem.           |
 | RF-08 | A lista é ordenada pela atividade mais recente.                                                |
 | RF-09 | A lista se atualiza sozinha quando chegam novas mensagens ou salas.                            |
 | RF-10 | O usuário seleciona uma sala para abrir a conversa.                                            |
-| RF-11 | Salas com mensagens não lidas são destacadas na lista.                                         |
+| RF-11 | Salas com mensagens não lidas são destacadas na lista, com um indicador de não lidas.          |
+| RF-22 | O avatar de cada sala é um círculo com a inicial do nome. O app não carrega imagens de avatar. |
 
 ### 3.3. Mensagens
 
 | ID    | Requisito                                                                                                 |
 | ----- | --------------------------------------------------------------------------------------------------------- |
-| RF-12 | A conversa exibe as mensagens de texto da sala, com remetente e horário.                                  |
+| RF-12 | A conversa exibe as mensagens de texto da sala, com o horário de cada mensagem.                           |
 | RF-13 | O usuário envia mensagens de texto pelo campo de envio (Enter envia, Shift+Enter quebra linha).           |
 | RF-14 | A mensagem enviada aparece imediatamente com estado "enviando" e muda para "enviada" ou "falhou".         |
 | RF-15 | Mensagens com falha podem ser reenviadas.                                                                 |
 | RF-16 | Novas mensagens recebidas aparecem na conversa aberta sem ação do usuário.                                |
 | RF-17 | Ao rolar até o topo, mensagens mais antigas são carregadas (paginação).                                   |
+| RF-23 | As mensagens de outros participantes mostram o nome de quem enviou, acima da bolha.                       |
 
 ### 3.4. Estados da interface
 
@@ -70,6 +73,8 @@ Este documento descreve os requisitos funcionais, não funcionais, a arquitetura
 | RF-18 | Telas exibem estados de carregamento, vazio e erro (ex.: "nenhuma sala", "sem conexão").           |
 | RF-19 | Perda de conexão é sinalizada ao usuário e a sincronização retoma sozinha quando a rede volta.     |
 | RF-20 | Erros vindos do Rust são traduzidos em mensagens claras, sem expor detalhes técnicos ou tokens.    |
+| RF-24 | Em janela larga, a tela principal mostra salas e conversa lado a lado. Em janela estreita, mostra só a lista, e a conversa abre por cima dela. |
+| RF-25 | Quando nenhuma sala está selecionada, o painel da conversa mostra a mensagem "Selecione uma sala". |
 
 ### 3.5. Camada Rust (exposta ao Dart)
 
@@ -103,7 +108,25 @@ O código Rust expõe ao Flutter, via Flutter Rust Bridge:
 
 O wireframe abaixo é a base de estrutura das telas: Login, lista de Salas e Chat (lista de salas à esquerda e conversa à direita). É uma referência de organização e fluxo, não uma especificação visual final.
 
+Ele foi desenhado tendo o **Telegram** como inspiração: lista de conversas em uma coluna e conversa aberta ao lado, com as mensagens próprias à direita e as dos outros à esquerda.
+
 ![Wireframe das telas: Login, Salas e Chat](img/wireframe.png)
+
+| Tela do wireframe | Papel no app | Requisitos |
+| ----------------- | ------------ | ---------- |
+| Login | Servidor, usuário e senha, com a opção de salvar o servidor | RF-01 a RF-03 |
+| Salas | Lista de conversas em tela cheia, usada quando a janela é estreita | RF-07 a RF-11 |
+| Chat | Lista de salas à esquerda e conversa à direita, usada quando a janela é larga | RF-10, RF-12 a RF-17 |
+
+Decisões de interface que complementam o wireframe:
+
+- **Layout responsivo (RF-24):** janela larga mostra as duas colunas (salas e conversa); janela estreita mostra só a lista, e a conversa abre por cima dela.
+- **Usuário e logout (RF-06):** o rodapé da lista de salas mostra o usuário logado (avatar com a inicial, nome e identificador completo) e o botão **Sair** com ícone de logout. Em janela larga o rodapé fica sempre visível; em janela estreita, ele aparece na tela da lista.
+- **Lista de salas:** cada item mostra o avatar, o nome, a última mensagem e, quando houver, um indicador de mensagens não lidas (RF-07, RF-11).
+- **Mensagens:** cada mensagem mostra o horário, e as de outros participantes mostram o nome de quem enviou acima da bolha (RF-12, RF-23). As mensagens próprias mostram o estado: enviando, enviada ou falhou (RF-14).
+- **Nenhuma sala selecionada:** o painel da conversa mostra a mensagem "Selecione uma sala" (RF-25).
+- **Avatares só com letras (RF-22):** não são carregadas imagens. O avatar é um círculo com a inicial do nome (por exemplo, "Alice" aparece como "A").
+- **Estados de carregamento, vazio e offline** seguem o RF-18 e o RF-19.
 
 ### 5.1. Navegação entre telas
 
@@ -145,13 +168,18 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    subgraph Principal
+    subgraph Larga["Janela larga"]
         direction LR
-        L["Lista de salas<br/>(esquerda)"] -->|seleciona| C["Conversa<br/>(direita)"]
-        C --> T[Timeline]
-        C --> I[Campo de envio]
+        L1[Lista de salas] --- C1[Conversa ou Selecione uma sala]
+    end
+    subgraph Estreita["Janela estreita"]
+        direction LR
+        L2[Lista de salas] -->|seleciona| C2[Conversa]
+        C2 -->|voltar| L2
     end
 ```
+
+O rodapé com o usuário e o botão Sair fica na base da lista de salas. A conversa é composta por cabeçalho, timeline e campo de envio; em janela estreita, o cabeçalho tem a seta de voltar.
 
 ### 5.5. Estados do app (sessão)
 
@@ -257,10 +285,11 @@ Registrar aqui as principais decisões, no formato abaixo.
 
 - **Pré-requisitos:** Flutter SDK, Rust toolchain, `flutter_rust_bridge_codegen` (versões A DEFINIR).
 - **Instalação, geração da bridge e execução:** A DEFINIR.
-- **Homeserver para testes:** Synapse local via `docker compose up -d`, que gera a configuração e cria os usuários `alice` e `bob` (senha `senha123`) sozinho. Detalhes no README.
+- **Homeserver para testes:** Synapse local via `docker compose up -d`, que gera a configuração, cria os usuários `alice`, `bob`, `carol` e `dave` (senha `senha123`) e seis salas de teste com mensagens, inclusive uma com 80 mensagens para testar a paginação. Detalhes no README.
 
 ---
 
 ## 8. Limitações e Itens Não Concluídos
 
-- A DEFINIR ao longo do desenvolvimento.
+- Não são carregadas imagens: os avatares das salas são só a inicial do nome (RF-22), e não há envio nem exibição de anexos.
+- Demais itens: A DEFINIR ao longo do desenvolvimento.
