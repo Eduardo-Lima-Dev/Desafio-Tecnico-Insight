@@ -31,7 +31,7 @@ Não existe back-end próprio. O homeserver Matrix cumpre esse papel, e o códig
 │   ├── lib/             Código Dart (UI e estado)
 │   ├── rust/            Crate Rust (Matrix SDK + funções expostas ao Dart)
 │   └── rust_builder/    Cargokit: compila o Rust junto com o app em cada sistema
-├── docker/synapse/      Dados do homeserver local (gerados, fora do repositório)
+├── docker/synapse/      Configuração extra do homeserver local (dev-overrides.yaml)
 ├── docker-compose.yml   Homeserver Matrix (Synapse) para desenvolvimento
 └── docs/                PRD e enunciado do desafio
 ```
@@ -79,72 +79,46 @@ Só a linha da plataforma desktop que você vai usar precisa estar correta.
 
 ## Homeserver Matrix local
 
-O app precisa de um homeserver. Este repositório traz um Synapse via Docker. Como a configuração contém segredos gerados, ela **não** é versionada e você a gera uma vez.
+O app precisa de um homeserver. O repositório traz um Synapse que sobe sozinho com Docker, sem configuração manual:
 
-1. **Gerar a configuração** (uma vez só):
+```bash
+docker compose up -d
+```
 
-   ```bash
-   docker compose run --rm -e UID=$(id -u) -e GID=$(id -g) synapse generate
-   ```
+Na primeira vez, o Compose faz tudo em sequência:
 
-   No Windows (PowerShell) e no macOS com Docker Desktop, pode rodar sem os `-e`:
+1. gera a configuração do Synapse (`synapse-init`), já com os limites de requisição relaxados para desenvolvimento (`docker/synapse/dev-overrides.yaml`);
+2. sobe o servidor (`synapse`);
+3. cria os usuários de teste (`synapse-seed`).
 
-   ```bash
-   docker compose run --rm synapse generate
-   ```
+Leva cerca de 30 segundos. Para conferir:
 
-2. **Relaxar os limites de requisição** (somente para desenvolvimento). Adicione ao final de `docker/synapse/homeserver.yaml`:
+```bash
+docker compose ps -a
+curl http://localhost:8008/health
+```
 
-   ```yaml
-   rc_login:
-     address:
-       per_second: 1000
-       burst_count: 1000
-     account:
-       per_second: 1000
-       burst_count: 1000
-     failed_attempts:
-       per_second: 1000
-       burst_count: 1000
-   rc_message:
-     per_second: 1000
-     burst_count: 1000
-   ```
+A resposta do `curl` deve ser `OK`, e `synapse-init` e `synapse-seed` aparecem como `Exited (0)`, o que é o esperado.
 
-3. **Subir o servidor:**
+No app, use:
 
-   ```bash
-   docker compose up -d
-   ```
+| Campo    | Valor                   |
+| -------- | ----------------------- |
+| Servidor | `http://localhost:8008` |
+| Usuário  | `alice` ou `bob`        |
+| Senha    | `senha123`              |
 
-   Confira se está saudável:
-
-   ```bash
-   docker compose ps
-   curl http://localhost:8008/health
-   ```
-
-   A resposta do `curl` deve ser `OK`.
-
-4. **Criar usuários de teste:**
-
-   ```bash
-   docker compose exec synapse register_new_matrix_user -c /data/homeserver.yaml -u alice -p senha123 --no-admin http://localhost:8008
-   docker compose exec synapse register_new_matrix_user -c /data/homeserver.yaml -u bob -p senha123 --no-admin http://localhost:8008
-   ```
-
-   Os usuários ficam `@alice:localhost` e `@bob:localhost`.
-
-No app, use o homeserver `http://localhost:8008`. As senhas acima são só para teste local.
+Os usuários ficam `@alice:localhost` e `@bob:localhost`. As credenciais são só para teste local.
 
 Comandos do dia a dia:
 
 ```bash
-docker compose up -d     # liga
-docker compose down      # desliga (os dados continuam em docker/synapse/)
+docker compose up -d       # liga
+docker compose down        # desliga (os dados ficam no volume do Docker)
+docker compose down -v     # desliga e apaga tudo, voltando ao estado inicial
 ```
 
-Se o contêiner reiniciar em loop com `Permission denied`, o seu usuário não tem uid 1000. Defina `SYNAPSE_UID` e `SYNAPSE_GID` com o resultado de `id -u` e `id -g` antes do `docker compose up`.
+Os dados ficam em um volume nomeado do Docker (`synapse-data`), então não há pastas nem permissões para ajustar no Linux, macOS ou Windows. Se a porta 8008 já estiver em uso, suba em outra com `SYNAPSE_PORT=18008 docker compose up -d` e use essa porta no app.
 
 Alternativa sem Docker: usar uma conta em `https://matrix.org`, informando `https://matrix.org` como homeserver.
 

@@ -99,6 +99,12 @@ O código Rust expõe ao Flutter, via Flutter Rust Bridge:
 
 ## 5. Fluxos de Interação
 
+### Referência visual
+
+O wireframe abaixo é a base de estrutura das telas: Login, lista de Salas e Chat (lista de salas à esquerda e conversa à direita). É uma referência de organização e fluxo, não uma especificação visual final.
+
+![Wireframe das telas: Login, Salas e Chat](img/wireframe.png)
+
 ### 5.1. Navegação entre telas
 
 ```mermaid
@@ -251,7 +257,7 @@ Registrar aqui as principais decisões, no formato abaixo.
 
 - **Pré-requisitos:** Flutter SDK, Rust toolchain, `flutter_rust_bridge_codegen` (versões A DEFINIR).
 - **Instalação, geração da bridge e execução:** A DEFINIR.
-- **Homeserver para testes:** A DEFINIR.
+- **Homeserver para testes:** Synapse local via `docker compose up -d`, que gera a configuração e cria os usuários `alice` e `bob` (senha `senha123`) sozinho. Detalhes no README.
 
 ---
 
