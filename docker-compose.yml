@@ -10,9 +10,10 @@ services:
       - |
         if [ ! -f /data/homeserver.yaml ]; then
           /start.py generate
-          printf '\n' >> /data/homeserver.yaml
-          cat /overrides/dev-overrides.yaml >> /data/homeserver.yaml
         fi
+        sed -i -e '/^# >>> dev-overrides/,$$d' -e '/^rc_login:/,$$d' /data/homeserver.yaml
+        printf '\n# >>> dev-overrides (gerado pelo docker-compose)\n' >> /data/homeserver.yaml
+        cat /overrides/dev-overrides.yaml >> /data/homeserver.yaml
     volumes:
       - synapse-data:/data
       - ./docker/synapse/dev-overrides.yaml:/overrides/dev-overrides.yaml:ro
@@ -42,11 +43,13 @@ services:
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
-        for user in alice bob; do
+        for user in alice bob carol dave; do
           register_new_matrix_user -c /data/homeserver.yaml -u "$$user" -p senha123 --no-admin http://synapse:8008 || true
         done
+        python /seed/seed_rooms.py
     volumes:
       - synapse-data:/data
+      - ./docker/synapse/seed_rooms.py:/seed/seed_rooms.py:ro
 
 volumes:
   synapse-data:
