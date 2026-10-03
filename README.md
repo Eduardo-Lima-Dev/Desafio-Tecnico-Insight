@@ -114,18 +114,24 @@ Os usuários ficam `@alice:localhost`, `@bob:localhost`, `@carol:localhost` e `@
 
 O seed também cria salas com mensagens trocadas entre os usuários, para o app já abrir com conversas, inclusive com mensagens não lidas:
 
-| Sala | Participantes | Mensagens |
-| ---- | ------------- | --------- |
-| Alice e Bob | alice, bob | 6 |
-| Equipe Insight | alice, bob, carol, dave | 7 |
-| Projeto Matrix | carol, alice, bob | 4 |
-| Bob e Carol | bob, carol | 3 |
-| Almoço de sexta | dave, alice, carol | 4 |
-| Histórico longo | alice, bob | 80 (para testar a paginação) |
+| Sala | Assunto | Participantes | Mensagens |
+| ---- | ------- | ------------- | --------- |
+| Alice e Bob | conversa do dia a dia (futebol) | alice, bob | 6 |
+| Equipe Insight | equipe de back-end (NestJS, JWT, Prisma) | alice, bob, carol, dave | 7 |
+| API de Pedidos | projeto de back-end em NestJS | carol, alice, bob | 4 |
+| Bob e Carol | vôlei | bob, carol | 3 |
+| Almoço de sexta | combinados do almoço | dave, alice, carol | 4 |
+| Futebol de quinta | racha semanal | dave, alice, bob, carol | 6 |
+| Vôlei da turma | treinos de vôlei | carol, alice, bob, dave | 5 |
+| Dúvidas de NestJS | validação com DTOs e pipes | bob, alice, carol, dave | 5 |
+| Churrasco do fim de semana | organização do churrasco | alice, bob, carol, dave | 6 |
+| Filmes e séries | indicações e maratona | carol, alice, dave | 4 |
+| Pipeline e deploy | CI/CD, Docker e Postgres | dave, alice, bob | 4 |
+| Histórico longo | mensagens numeradas, para testar a paginação | alice, bob | 80 |
 
-Entrando como `alice`, aparecem 5 salas; como `dave`, 2. O seed é idempotente: rodar `docker compose up -d` de novo não duplica nada, e salas que já existem são mantidas. Para recriar tudo do zero, use `docker compose down -v` e suba de novo.
+Entrando como `alice`, aparecem 11 salas; como `bob`, 10; como `carol`, 9; e como `dave`, 8. O seed é idempotente: rodar `docker compose up -d` de novo não duplica nada, e salas que já existem são mantidas. Para recriar tudo do zero, use `docker compose down -v` e suba de novo.
 
-Se você já tinha o Docker rodando de uma versão anterior do repositório, basta `docker compose down` e `docker compose up -d`: a configuração é atualizada e as salas novas são criadas por cima do que já existe.
+Se você já tinha o Docker rodando de uma versão anterior do repositório, basta `docker compose down` e `docker compose up -d`: a configuração é atualizada e as salas novas são criadas por cima do que já existe. Salas que já existem **não** têm o texto atualizado; para ver as conversas novas desde o início, use `docker compose down -v` e suba de novo (isso apaga os dados do servidor de teste e as sessões salvas no app).
 
 Comandos do dia a dia:
 

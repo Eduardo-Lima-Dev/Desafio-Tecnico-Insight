@@ -75,6 +75,8 @@ Este documento descreve os requisitos funcionais, não funcionais, a arquitetura
 | RF-20 | Erros vindos do Rust são traduzidos em mensagens claras, sem expor detalhes técnicos ou tokens.    |
 | RF-24 | Em janela larga, a tela principal mostra salas e conversa lado a lado. Em janela estreita, mostra só a lista, e a conversa abre por cima dela. |
 | RF-25 | Quando nenhuma sala está selecionada, o painel da conversa mostra a mensagem "Selecione uma sala". |
+| RF-26 | O usuário cria uma conversa direta pelo botão "Nova conversa", informando o identificador de outro usuário (por exemplo `@bob:localhost` ou só `bob`). Se já existir uma conversa direta com essa pessoa, ela é reaberta em vez de duplicada. |
+| RF-27 | Convites recebidos aparecem em uma seção "Convites" no topo da lista, com as ações Aceitar e Recusar. Aceitar abre a conversa. |
 
 ### 3.5. Camada Rust (exposta ao Dart)
 
@@ -291,7 +293,14 @@ Registrar aqui as principais decisões, no formato abaixo.
 - **Contexto:** a conversa precisa mostrar as mensagens em tempo real, com remetente, horário e, depois, estado de envio e histórico (RF-12, RF-14, RF-16, RF-17, RF-23).
 - **Decisão:** um `Timeline` por sala aberta, guardado no Rust. O Dart pede para abrir e fechar a sala e observa um stream de mensagens já convertidas (`ChatMessage`). Cada mensagem usa o identificador único do item da timeline, que continua o mesmo quando uma mensagem local vira remota. Mensagens de outros participantes marcam a sala como lida.
 - **Alternativas consideradas:** montar a conversa a partir dos eventos do sync (reimplementaria agrupamento, edições e mensagens locais).
-- **Consequências:** mensagens que não são texto aparecem como "Mensagem não suportada", e as que não puderam ser decifradas aparecem como "Mensagem criptografada". O envio usa a fila de envio do SDK: a mensagem aparece na hora como "enviando" (eco local) e muda para "enviada"; sem rede, ela fica como "falhou" até o usuário tocar no ícone de erro, que reativa a fila e reenvia (RF-14, RF-15). O campo de envio usa Enter para enviar e Shift+Enter para quebrar linha (RF-13).
+- **Consequências:** mensagens que não são texto aparecem como "Mensagem não suportada", e as que não puderam ser decifradas aparecem como "Mensagem criptografada". O envio usa a fila de envio do SDK: a mensagem aparece na hora como "enviando" (eco local) e muda para "enviada"; sem rede, ela fica como "falhou" até o usuário tocar no ícone de erro, que reativa a fila e reenvia (RF-14, RF-15). O campo de envio usa Enter para enviar e Shift+Enter para quebrar linha (RF-13). O histórico é carregado em páginas de 30 mensagens quando a lista se aproxima do topo (RF-17): o Rust usa `paginate_backwards` e informa quando a sala chegou ao início, e a tela mostra um indicador de carregamento, o aviso "Início da conversa" ou, se falhar, um botão para tentar de novo.
+
+### DT-007 — Nova conversa e convites
+
+- **Contexto:** sem criar conversas, o usuário só enxergaria as salas que já existem no servidor; e quem recebe uma conversa nova só a vê depois de aceitar o convite (RF-26, RF-27).
+- **Decisão:** a conversa direta é criada com `create_room` (`is_direct`, preset de conversa privada confiável e convite à outra pessoa), **sem criptografia**, em vez do `create_dm` do SDK, que criptografa por padrão. Antes de criar, o Rust consulta o perfil da outra pessoa e procura uma conversa direta existente (inclusive com convite pendente) para não duplicar. Os convites vêm de um segundo stream do `RoomListService` filtrado por salas convidadas; aceitar usa `join` e recusar usa `leave`.
+- **Alternativas consideradas:** `create_dm` (conversas criptografadas, que o app não exibe como texto); criar a sala sem checar o perfil (o servidor aceita convidar usuários inexistentes e deixaria uma sala órfã).
+- **Consequências:** só conversas diretas 1:1; não há criação de grupos, busca de usuários nem lista de contatos. O identificador é normalizado (`bob` vira `@bob:<servidor do usuário>`).
 
 ---
 
@@ -299,7 +308,7 @@ Registrar aqui as principais decisões, no formato abaixo.
 
 - **Pré-requisitos:** Flutter SDK, Rust toolchain, `flutter_rust_bridge_codegen` (versões A DEFINIR).
 - **Instalação, geração da bridge e execução:** A DEFINIR.
-- **Homeserver para testes:** Synapse local via `docker compose up -d`, que gera a configuração, cria os usuários `alice`, `bob`, `carol` e `dave` (senha `senha123`) e seis salas de teste com mensagens, inclusive uma com 80 mensagens para testar a paginação. Detalhes no README.
+- **Homeserver para testes:** Synapse local via `docker compose up -d`, que gera a configuração, cria os usuários `alice`, `bob`, `carol` e `dave` (senha `senha123`) e doze salas de teste com conversas de assuntos variados (back-end com NestJS, futebol, vôlei, churrasco, filmes e outros), inclusive uma com 80 mensagens para testar a paginação. Detalhes no README.
 
 ---
 
@@ -307,6 +316,7 @@ Registrar aqui as principais decisões, no formato abaixo.
 
 - Não são carregadas imagens: os avatares das salas são só a inicial do nome (RF-22), e não há envio nem exibição de anexos.
 - Salas com criptografia ponta a ponta: o app não decifra mensagens, e mostra "Mensagem criptografada" no lugar do texto. Na lista de salas, a última mensagem de uma sala criptografada aparece como "Sem mensagens".
+- Só é possível criar conversas diretas 1:1 (sem grupos, sem busca de usuários); as conversas criadas pelo app não são criptografadas.
 - Só é possível enviar texto simples: não há edição, exclusão, resposta nem anexos.
 - O reenvio de uma mensagem que falhou é manual (toque no ícone de erro); o app não tenta de novo sozinho.
 - O contador de não lidas considera apenas as últimas 20 mensagens de cada sala.
