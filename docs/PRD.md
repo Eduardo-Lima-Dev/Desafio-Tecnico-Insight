@@ -291,7 +291,7 @@ Registrar aqui as principais decisões, no formato abaixo.
 - **Contexto:** a conversa precisa mostrar as mensagens em tempo real, com remetente, horário e, depois, estado de envio e histórico (RF-12, RF-14, RF-16, RF-17, RF-23).
 - **Decisão:** um `Timeline` por sala aberta, guardado no Rust. O Dart pede para abrir e fechar a sala e observa um stream de mensagens já convertidas (`ChatMessage`). Cada mensagem usa o identificador único do item da timeline, que continua o mesmo quando uma mensagem local vira remota. Mensagens de outros participantes marcam a sala como lida.
 - **Alternativas consideradas:** montar a conversa a partir dos eventos do sync (reimplementaria agrupamento, edições e mensagens locais).
-- **Consequências:** mensagens que não são texto aparecem como "Mensagem não suportada", e as que não puderam ser decifradas aparecem como "Mensagem criptografada".
+- **Consequências:** mensagens que não são texto aparecem como "Mensagem não suportada", e as que não puderam ser decifradas aparecem como "Mensagem criptografada". O envio usa a fila de envio do SDK: a mensagem aparece na hora como "enviando" (eco local) e muda para "enviada"; sem rede, ela fica como "falhou" até o usuário tocar no ícone de erro, que reativa a fila e reenvia (RF-14, RF-15). O campo de envio usa Enter para enviar e Shift+Enter para quebrar linha (RF-13).
 
 ---
 
@@ -307,6 +307,8 @@ Registrar aqui as principais decisões, no formato abaixo.
 
 - Não são carregadas imagens: os avatares das salas são só a inicial do nome (RF-22), e não há envio nem exibição de anexos.
 - Salas com criptografia ponta a ponta: o app não decifra mensagens, e mostra "Mensagem criptografada" no lugar do texto. Na lista de salas, a última mensagem de uma sala criptografada aparece como "Sem mensagens".
+- Só é possível enviar texto simples: não há edição, exclusão, resposta nem anexos.
+- O reenvio de uma mensagem que falhou é manual (toque no ícone de erro); o app não tenta de novo sozinho.
 - O contador de não lidas considera apenas as últimas 20 mensagens de cada sala.
 - Só mensagens de texto são exibidas; imagens, arquivos, enquetes e demais tipos aparecem como "Mensagem não suportada".
 - Demais itens: A DEFINIR ao longo do desenvolvimento.
