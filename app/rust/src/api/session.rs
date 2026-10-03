@@ -6,7 +6,7 @@ use matrix_sdk::ruma::api::error::ErrorKind;
 use matrix_sdk::store::RoomLoadSettings;
 use matrix_sdk::{Client, ClientBuildError, SessionMeta, SessionTokens};
 
-use crate::{client_holder, sync_holder};
+use crate::{client_holder, sync_holder, timeline_holder};
 
 #[derive(Debug, thiserror::Error)]
 pub enum AuthError {
@@ -146,6 +146,7 @@ pub async fn restore_session(
 }
 
 pub async fn logout() -> Result<(), AuthError> {
+    timeline_holder::close(None).await;
     sync_holder::stop().await;
     let client = client_holder::take().await.ok_or(AuthError::NotLoggedIn)?;
     client
