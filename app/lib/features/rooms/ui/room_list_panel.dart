@@ -5,7 +5,6 @@ import 'package:app/features/conversations/ui/conversation_failure_message.dart'
 import 'package:app/features/conversations/ui/invite_tile.dart';
 import 'package:app/features/conversations/ui/new_conversation_dialog.dart';
 import 'package:app/features/rooms/domain/room_summary.dart';
-import 'package:app/features/rooms/domain/sync_status.dart';
 import 'package:app/features/rooms/state/rooms_providers.dart';
 import 'package:app/features/rooms/ui/room_tile.dart';
 import 'package:app/features/session/domain/session_failure.dart';
@@ -19,7 +18,6 @@ class RoomListPanel extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final rooms = ref.watch(roomsProvider);
-    final status = ref.watch(syncStatusProvider).value;
     final selectedId = ref.watch(selectedRoomIdProvider);
     final invites = ref.watch(invitesProvider).value ?? const <RoomInvite>[];
 
@@ -44,7 +42,6 @@ class RoomListPanel extends ConsumerWidget {
             }
           },
         ),
-        if (status == SyncStatus.offline) const _OfflineBanner(),
         Expanded(
           child: rooms.when(
             loading: () => const Center(child: CircularProgressIndicator()),
@@ -184,24 +181,6 @@ class _SectionLabel extends StatelessWidget {
         style: theme.textTheme.labelLarge?.copyWith(
           color: theme.colorScheme.primary,
         ),
-      ),
-    );
-  }
-}
-
-class _OfflineBanner extends StatelessWidget {
-  const _OfflineBanner();
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Container(
-      width: double.infinity,
-      color: scheme.errorContainer,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Text(
-        'Sem conexão. Tentando reconectar...',
-        style: TextStyle(color: scheme.onErrorContainer),
       ),
     );
   }

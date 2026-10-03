@@ -1,4 +1,5 @@
 import 'package:app/features/rooms/state/rooms_providers.dart';
+import 'package:app/features/rooms/ui/connection_banner.dart';
 import 'package:app/features/rooms/ui/conversation_panel.dart';
 import 'package:app/features/rooms/ui/room_list_panel.dart';
 import 'package:app/features/rooms/ui/user_footer.dart';
@@ -37,23 +38,38 @@ class HomePage extends ConsumerWidget {
 
         if (wide) {
           return Scaffold(
-            body: Row(
+            body: Column(
               children: [
-                SizedBox(width: 340, child: sidebar),
-                const VerticalDivider(width: 1),
-                const Expanded(child: ConversationPanel()),
+                const ConnectionBanner(),
+                Expanded(
+                  child: Row(
+                    children: [
+                      SizedBox(width: 340, child: sidebar),
+                      const VerticalDivider(width: 1),
+                      const Expanded(child: ConversationPanel()),
+                    ],
+                  ),
+                ),
               ],
             ),
           );
         }
 
         return Scaffold(
-          body: selectedId == null
-              ? sidebar
-              : ConversationPanel(
-                  onBack: () =>
-                      ref.read(selectedRoomIdProvider.notifier).select(null),
-                ),
+          body: Column(
+            children: [
+              const ConnectionBanner(),
+              Expanded(
+                child: selectedId == null
+                    ? sidebar
+                    : ConversationPanel(
+                        onBack: () => ref
+                            .read(selectedRoomIdProvider.notifier)
+                            .select(null),
+                      ),
+              ),
+            ],
+          ),
         );
       },
     );

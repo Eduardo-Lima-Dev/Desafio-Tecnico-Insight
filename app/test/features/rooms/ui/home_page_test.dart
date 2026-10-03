@@ -11,6 +11,7 @@ import 'package:app/features/rooms/data/rooms_repository.dart';
 import 'package:app/features/rooms/domain/room_summary.dart';
 import 'package:app/features/rooms/domain/sync_status.dart';
 import 'package:app/features/rooms/state/rooms_providers.dart';
+import 'package:app/features/rooms/ui/connection_banner.dart';
 import 'package:app/features/rooms/ui/home_page.dart';
 import 'package:app/features/rooms/ui/user_footer.dart';
 import 'package:app/features/session/data/session_repository.dart';
@@ -44,9 +45,11 @@ class _FakeRoomsRepository implements RoomsRepository {
   final List<RoomSummary> rooms;
   final SyncStatus status;
   final SessionFailure? startError;
+  int starts = 0;
 
   @override
   Future<void> start() async {
+    starts++;
     if (startError != null) throw startError!;
   }
 
@@ -659,5 +662,88 @@ void main() {
       find.text('Você ainda não participa de nenhuma sala.'),
       findsNothing,
     );
+  });
+
+  testWidgets('sem conexão o aviso aparece também com a conversa aberta', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      size: narrow,
+      rooms: _FakeRoomsRepository(status: SyncStatus.offline),
+    );
+    expect(find.text('Sem conexão. Tentando reconectar...'), findsOneWidget);
+
+    await tester.tap(find.text('Alice e Bob'));
+    await tester.pumpAndSettle();
+
+    expect(find.byTooltip('Voltar'), findsOneWidget);
+    expect(find.text('Equipe Insight'), findsNothing);
+    expect(find.text('Sem conexão. Tentando reconectar...'), findsOneWidget);
+  });
+
+  testWidgets('em janela larga o aviso ocupa o topo de toda a tela', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      size: wide,
+      rooms: _FakeRoomsRepository(status: SyncStatus.offline),
+    );
+
+    final banner = find.byType(ConnectionBanner);
+    expect(tester.getTopLeft(banner).dy, 0);
+    expect(tester.getSize(banner).width, wide.width);
+    expect(
+      tester.getTopLeft(find.text('Alice e Bob')).dy,
+      greaterThan(tester.getBottomLeft(banner).dy - 1),
+    );
+  });
+
+  testWidgets('conectado não mostra nenhum aviso de conexão', (tester) async {
+    await _pump(tester, size: wide);
+
+    expect(find.text('Sem conexão. Tentando reconectar...'), findsNothing);
+    expect(find.text('Não foi possível sincronizar.'), findsNothing);
+  });
+
+  testWidgets('falha na sincronização mostra o aviso com nova tentativa', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      size: wide,
+      rooms: _FakeRoomsRepository(status: SyncStatus.failed),
+    );
+
+    expect(find.text('Não foi possível sincronizar.'), findsOneWidget);
+    expect(find.text('Tentar de novo'), findsOneWidget);
+    expect(find.text('Alice e Bob'), findsOneWidget);
+  });
+
+  testWidgets('Tentar de novo reinicia a sincronização', (tester) async {
+    final rooms = _FakeRoomsRepository(status: SyncStatus.failed);
+    await _pump(tester, size: wide, rooms: rooms);
+    expect(rooms.starts, 1);
+
+    await tester.tap(find.text('Tentar de novo'));
+    await tester.pumpAndSettle();
+
+    expect(rooms.starts, 2);
+  });
+
+  testWidgets('a falha de sincronização aparece também em janela estreita', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      size: narrow,
+      rooms: _FakeRoomsRepository(status: SyncStatus.failed),
+    );
+
+    await tester.tap(find.text('Alice e Bob'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Não foi possível sincronizar.'), findsOneWidget);
   });
 }
