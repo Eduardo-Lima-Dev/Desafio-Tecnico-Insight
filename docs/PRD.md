@@ -217,12 +217,33 @@ sequenceDiagram
 
 Registrar aqui as principais decisões, no formato abaixo.
 
-### DT-001 — Título
+### DT-001 — Gerenciamento de estado: Riverpod
 
-- **Contexto:** 
-- **Decisão:** 
-- **Alternativas consideradas:** 
-- **Consequências:** 
+- **Contexto:** o app consome streams vindos do Rust (sync, salas, timeline) e precisa de estados de carregamento, vazio e erro (RF-18), além de testes de lógica de estado.
+- **Decisão:** `flutter_riverpod` com `riverpod_generator` (`AsyncNotifier`/`Notifier`). Repositórios são expostos como providers.
+- **Alternativas consideradas:** BLoC (mais código para fluxos baseados em stream); Provider (DI e testes mais fracos); `setState` (não escala); GetX (mistura responsabilidades).
+- **Consequências:** `AsyncValue` cobre carregando/erro/dados; `autoDispose` cancela subscriptions de stream; fakes entram via `overrides` nos testes, sem pacote de DI extra. Exige `build_runner` para gerar os providers.
+
+### DT-002 — Armazenamento seguro da sessão: flutter_secure_storage
+
+- **Contexto:** credenciais e tokens não podem ficar em texto puro nem em logs (RNF de segurança, RF-03).
+- **Decisão:** `flutter_secure_storage` guarda a sessão serializada e uma passphrase aleatória que protege o banco SQLite do Matrix SDK. No Linux usa o libsecret; no macOS, o Keychain; no Windows, o Credential Manager. Logout e sessão inválida apagam sessão e passphrase (RF-05, RF-06).
+- **Alternativas consideradas:** `shared_preferences` ou arquivo JSON (texto puro, rejeitado); guardar tudo só no Rust (a restauração via Dart ficaria mais acoplada ao SDK).
+- **Consequências:** o Linux depende de um serviço de segredos (libsecret) disponível na máquina. O banco só é legível com a passphrase guardada no cofre do SO.
+
+### DT-003 — Arquitetura em camadas por feature
+
+- **Contexto:** o PRD exige separação clara entre UI, estado, acesso ao Matrix e Rust.
+- **Decisão:** cada feature em `ui / state / data / domain`. Todo acesso ao Matrix acontece no Rust; o repositório Dart é o único ponto que conhece os tipos gerados pelo FRB e os converte em modelos de domínio. Erros do Rust chegam tipados (enum) e a UI os traduz em mensagens (RF-20).
+- **Alternativas consideradas:** organização por tipo de arquivo (menos coesa); chamar a bridge direto dos widgets (acopla UI ao FRB).
+- **Consequências:** mais arquivos por feature, em troca de testes simples (repositório falso) e facilidade para evoluir.
+
+### DT-004 — Qualidade estática: very_good_analysis e clippy
+
+- **Contexto:** o desafio valoriza qualidade de código e verificação objetiva.
+- **Decisão:** `very_good_analysis` no Dart (com `public_member_api_docs` desligada, pois é app e não biblioteca) e `cargo clippy --all-targets -- -D warnings` no Rust.
+- **Alternativas consideradas:** `flutter_lints` (regras mais brandas).
+- **Consequências:** o analyzer é mais rigoroso; código gerado (FRB, `*.g.dart`) é excluído da análise.
 
 ---
 
