@@ -1,6 +1,6 @@
 # Homeserver local: segredos, chave de assinatura e banco gerados pelo Synapse
 docker/synapse/*
-!docker/synapse/.gitkeep
+!docker/synapse/dev-overrides.yaml
 
 # Editores e sistema
 .idea/

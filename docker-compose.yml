@@ -1,19 +1,52 @@
 services:
-  synapse:
+  synapse-init:
     image: matrixdotorg/synapse:latest
-    container_name: synapse
-    restart: unless-stopped
+    restart: "no"
     environment:
       - SYNAPSE_SERVER_NAME=localhost
       - SYNAPSE_REPORT_STATS=no
-      - UID=${SYNAPSE_UID:-1000}
-      - GID=${SYNAPSE_GID:-1000}
-    ports:
-      - 8008:8008
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        if [ ! -f /data/homeserver.yaml ]; then
+          /start.py generate
+          printf '\n' >> /data/homeserver.yaml
+          cat /overrides/dev-overrides.yaml >> /data/homeserver.yaml
+        fi
     volumes:
-      - ./docker/synapse:/data
+      - synapse-data:/data
+      - ./docker/synapse/dev-overrides.yaml:/overrides/dev-overrides.yaml:ro
+
+  synapse:
+    image: matrixdotorg/synapse:latest
+    restart: unless-stopped
+    depends_on:
+      synapse-init:
+        condition: service_completed_successfully
+    ports:
+      - "${SYNAPSE_PORT:-8008}:8008"
+    volumes:
+      - synapse-data:/data
     healthcheck:
       test: ["CMD", "curl", "-fSs", "http://localhost:8008/health"]
       interval: 10s
       timeout: 5s
       retries: 10
+
+  synapse-seed:
+    image: matrixdotorg/synapse:latest
+    restart: "no"
+    depends_on:
+      synapse:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        for user in alice bob; do
+          register_new_matrix_user -c /data/homeserver.yaml -u "$$user" -p senha123 --no-admin http://synapse:8008 || true
+        done
+    volumes:
+      - synapse-data:/data
+
+volumes:
+  synapse-data:
