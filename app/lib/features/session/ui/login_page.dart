@@ -1,4 +1,5 @@
 import 'package:app/features/session/domain/session_failure.dart';
+import 'package:app/features/session/state/saved_server_providers.dart';
 import 'package:app/features/session/state/session_providers.dart';
 import 'package:app/features/session/ui/failure_message.dart';
 import 'package:flutter/material.dart';
@@ -16,6 +17,20 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   final _homeserver = TextEditingController();
   final _username = TextEditingController();
   final _password = TextEditingController();
+  var _saveServer = false;
+
+  @override
+  void initState() {
+    super.initState();
+    ref.listenManual(savedServerControllerProvider, (_, next) {
+      final saved = next.value;
+      if (saved == null || _homeserver.text.isNotEmpty) return;
+      setState(() {
+        _homeserver.text = saved;
+        _saveServer = true;
+      });
+    }, fireImmediately: true);
+  }
 
   @override
   void dispose() {
@@ -40,6 +55,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           homeserver: _homeserver.text,
           username: _username.text,
           password: password,
+          saveServer: _saveServer,
         );
   }
 
@@ -49,12 +65,14 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     final isLoading = login.isLoading;
     final error = login.error;
 
+    final theme = Theme.of(context);
+
     return Scaffold(
       body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 400),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 360),
             child: Form(
               key: _formKey,
               child: Column(
@@ -62,26 +80,29 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    'Entrar',
-                    style: Theme.of(context).textTheme.headlineMedium,
+                    'Login',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.headlineLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   const SizedBox(height: 24),
-                  TextFormField(
-                    controller: _homeserver,
-                    enabled: !isLoading,
-                    keyboardType: TextInputType.url,
-                    decoration: const InputDecoration(
-                      labelText: 'Servidor',
-                      hintText: 'https://matrix.org',
+                  Center(
+                    child: Image.asset(
+                      'assets/icon/app_icon.png',
+                      width: 120,
+                      height: 120,
+                      semanticLabel: 'Logotipo do aplicativo',
                     ),
-                    validator: _required,
-                    textInputAction: TextInputAction.next,
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 32),
                   TextFormField(
                     controller: _username,
                     enabled: !isLoading,
-                    decoration: const InputDecoration(labelText: 'Usuário'),
+                    decoration: const InputDecoration(
+                      labelText: 'Usuário',
+                      border: OutlineInputBorder(),
+                    ),
                     validator: _required,
                     textInputAction: TextInputAction.next,
                   ),
@@ -90,9 +111,36 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     controller: _password,
                     enabled: !isLoading,
                     obscureText: true,
-                    decoration: const InputDecoration(labelText: 'Senha'),
+                    decoration: const InputDecoration(
+                      labelText: 'Senha',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: _required,
+                    textInputAction: TextInputAction.next,
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _homeserver,
+                    enabled: !isLoading,
+                    keyboardType: TextInputType.url,
+                    decoration: const InputDecoration(
+                      labelText: 'Servidor',
+                      hintText: 'https://matrix.org',
+                      border: OutlineInputBorder(),
+                    ),
                     validator: _required,
                     onFieldSubmitted: (_) => _submit(),
+                  ),
+                  CheckboxListTile(
+                    value: _saveServer,
+                    onChanged: isLoading
+                        ? null
+                        : (value) =>
+                              setState(() => _saveServer = value ?? false),
+                    title: const Text('Salvar servidor'),
+                    controlAffinity: ListTileControlAffinity.leading,
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
                   ),
                   if (error != null) ...[
                     const SizedBox(height: 16),
@@ -100,13 +148,15 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       error is SessionFailure
                           ? error.message
                           : SessionFailure.unknown.message,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.error,
-                      ),
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: theme.colorScheme.error),
                     ),
                   ],
                   const SizedBox(height: 24),
                   FilledButton(
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size.fromHeight(48),
+                    ),
                     onPressed: isLoading ? null : _submit,
                     child: isLoading
                         ? const SizedBox(

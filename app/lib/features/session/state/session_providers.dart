@@ -2,8 +2,10 @@ import 'package:app/features/session/data/matrix_session_repository.dart';
 import 'package:app/features/session/data/session_repository.dart';
 import 'package:app/features/session/data/session_store.dart';
 import 'package:app/features/session/domain/auth_state.dart';
+import 'package:app/features/session/domain/homeserver_url.dart';
 import 'package:app/features/session/domain/session.dart';
 import 'package:app/features/session/domain/session_failure.dart';
+import 'package:app/features/session/state/saved_server_providers.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'session_providers.g.dart';
@@ -43,6 +45,7 @@ class LoginController extends _$LoginController {
     required String homeserver,
     required String username,
     required String password,
+    required bool saveServer,
   }) async {
     state = const AsyncLoading();
 
@@ -66,7 +69,25 @@ class LoginController extends _$LoginController {
     }
 
     if (!ref.mounted) return;
+    await _updateSavedServer(homeserver: homeserver, save: saveServer);
+    if (!ref.mounted) return;
     state = const AsyncData(null);
     ref.read(sessionControllerProvider.notifier).signIn(session);
+  }
+
+  Future<void> _updateSavedServer({
+    required String homeserver,
+    required bool save,
+  }) async {
+    final saved = ref.read(savedServerControllerProvider.notifier);
+    try {
+      if (save) {
+        await saved.save(normalizeHomeserverUrl(homeserver));
+      } else {
+        await saved.clear();
+      }
+    } on Object {
+      // Falhar ao lembrar o servidor não deve impedir o login.
+    }
   }
 }
