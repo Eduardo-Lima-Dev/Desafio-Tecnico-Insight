@@ -1,5 +1,8 @@
 import 'dart:async';
 
+import 'package:app/features/chat/data/chat_repository.dart';
+import 'package:app/features/chat/domain/chat_message.dart';
+import 'package:app/features/chat/state/chat_providers.dart';
 import 'package:app/features/rooms/data/rooms_repository.dart';
 import 'package:app/features/rooms/domain/room_summary.dart';
 import 'package:app/features/rooms/domain/sync_status.dart';
@@ -58,6 +61,29 @@ class _FakeRoomsRepository implements RoomsRepository {
   }
 }
 
+class _FakeChatRepository implements ChatRepository {
+  _FakeChatRepository({this.messages = const {}, this.openError});
+
+  final Map<String, List<ChatMessage>> messages;
+  final SessionFailure? openError;
+  final List<String> opened = [];
+  final List<String> closed = [];
+
+  @override
+  Future<void> open(String roomId) async {
+    opened.add(roomId);
+    if (openError != null) throw openError!;
+  }
+
+  @override
+  Future<void> close(String roomId) async => closed.add(roomId);
+
+  @override
+  Stream<List<ChatMessage>> watchMessages(String roomId) async* {
+    yield messages[roomId] ?? const [];
+  }
+}
+
 class _FakeSessionRepository implements SessionRepository {
   int logoutCalls = 0;
 
@@ -80,6 +106,7 @@ Future<void> _pump(
   required Size size,
   _FakeRoomsRepository? rooms,
   _FakeSessionRepository? session,
+  _FakeChatRepository? chat,
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
@@ -94,6 +121,7 @@ Future<void> _pump(
         sessionRepositoryProvider.overrideWithValue(
           session ?? _FakeSessionRepository(),
         ),
+        chatRepositoryProvider.overrideWithValue(chat ?? _FakeChatRepository()),
       ],
       child: const MaterialApp(home: HomePage(session: _alice)),
     ),
@@ -124,7 +152,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Selecione uma sala'), findsNothing);
-    expect(find.text('Mensagens em breve'), findsOneWidget);
+    expect(find.text('Nenhuma mensagem ainda.'), findsOneWidget);
     expect(find.text('Alice e Bob'), findsOneWidget);
     expect(find.text('Equipe Insight'), findsNWidgets(2));
   });
@@ -198,7 +226,7 @@ void main() {
     await tester.tap(find.text('Alice e Bob'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Mensagens em breve'), findsOneWidget);
+    expect(find.text('Nenhuma mensagem ainda.'), findsOneWidget);
     expect(find.text('Equipe Insight'), findsNothing);
     expect(find.byType(UserFooter), findsNothing);
     expect(find.byTooltip('Voltar'), findsOneWidget);
@@ -207,7 +235,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Equipe Insight'), findsOneWidget);
-    expect(find.text('Mensagens em breve'), findsNothing);
+    expect(find.text('Nenhuma mensagem ainda.'), findsNothing);
     expect(find.byType(UserFooter), findsOneWidget);
   });
 
@@ -259,5 +287,165 @@ void main() {
     expect(find.text('Algo deu errado. Tente novamente.'), findsOneWidget);
     expect(find.text('Tentar de novo'), findsOneWidget);
     expect(find.byType(UserFooter), findsOneWidget);
+  });
+
+  testWidgets('abrir uma sala mostra as mensagens com remetente e horário', (
+    tester,
+  ) async {
+    final chat = _FakeChatRepository(
+      messages: {
+        '!a': [
+          ChatMessage(
+            id: '1',
+            senderId: '@bob:localhost',
+            senderName: 'Bob',
+            text: 'Oi, Alice!',
+            sentAt: DateTime(2020, 1, 2, 9, 5),
+            isOwn: false,
+          ),
+          ChatMessage(
+            id: '2',
+            senderId: '@alice:localhost',
+            senderName: 'Alice',
+            text: 'Oi, Bob! Tudo bem?',
+            sentAt: DateTime(2020, 1, 2, 9, 6),
+            isOwn: true,
+          ),
+        ],
+      },
+    );
+    await _pump(tester, size: wide, chat: chat);
+
+    await tester.tap(find.text('Alice e Bob'));
+    await tester.pumpAndSettle();
+
+    expect(chat.opened, ['!a']);
+    expect(find.text('Oi, Alice!'), findsOneWidget);
+    expect(find.text('Oi, Bob! Tudo bem?'), findsOneWidget);
+    expect(find.text('Bob'), findsOneWidget);
+    expect(find.text('Alice'), findsNothing);
+    expect(find.text('02/01'), findsNWidgets(3));
+    expect(find.text('Nenhuma mensagem ainda.'), findsNothing);
+  });
+
+  testWidgets(
+    'as mensagens próprias ficam à direita e as dos outros à esquerda',
+    (
+      tester,
+    ) async {
+      final chat = _FakeChatRepository(
+        messages: {
+          '!a': [
+            ChatMessage(
+              id: '1',
+              senderId: '@bob:localhost',
+              senderName: 'Bob',
+              text: 'Mensagem do Bob',
+              sentAt: DateTime(2020, 1, 2),
+              isOwn: false,
+            ),
+            ChatMessage(
+              id: '2',
+              senderId: '@alice:localhost',
+              senderName: 'Alice',
+              text: 'Mensagem da Alice',
+              sentAt: DateTime(2020, 1, 2),
+              isOwn: true,
+            ),
+          ],
+        },
+      );
+      await _pump(tester, size: wide, chat: chat);
+
+      await tester.tap(find.text('Alice e Bob'));
+      await tester.pumpAndSettle();
+
+      final other = tester.getCenter(find.text('Mensagem do Bob')).dx;
+      final own = tester.getCenter(find.text('Mensagem da Alice')).dx;
+      expect(own, greaterThan(other));
+    },
+  );
+
+  testWidgets('a conversa mais recente fica na parte de baixo', (tester) async {
+    final chat = _FakeChatRepository(
+      messages: {
+        '!a': [
+          for (var i = 1; i <= 3; i++)
+            ChatMessage(
+              id: '$i',
+              senderId: '@bob:localhost',
+              senderName: 'Bob',
+              text: 'Mensagem $i',
+              sentAt: DateTime(2020, 1, 2),
+              isOwn: false,
+            ),
+        ],
+      },
+    );
+    await _pump(tester, size: wide, chat: chat);
+
+    await tester.tap(find.text('Alice e Bob'));
+    await tester.pumpAndSettle();
+
+    final first = tester.getTopLeft(find.text('Mensagem 1')).dy;
+    final last = tester.getTopLeft(find.text('Mensagem 3')).dy;
+    expect(last, greaterThan(first));
+  });
+
+  testWidgets('mensagem criptografada mostra um aviso no lugar do texto', (
+    tester,
+  ) async {
+    final chat = _FakeChatRepository(
+      messages: {
+        '!a': [
+          ChatMessage(
+            id: '1',
+            senderId: '@bob:localhost',
+            senderName: 'Bob',
+            text: '',
+            sentAt: DateTime(2020, 1, 2),
+            isOwn: false,
+            kind: MessageKind.encrypted,
+          ),
+        ],
+      },
+    );
+    await _pump(tester, size: wide, chat: chat);
+
+    await tester.tap(find.text('Alice e Bob'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Mensagem criptografada'), findsOneWidget);
+  });
+
+  testWidgets('falha ao abrir a conversa mostra erro com nova tentativa', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      size: wide,
+      chat: _FakeChatRepository(openError: SessionFailure.unknown),
+    );
+
+    await tester.tap(find.text('Alice e Bob'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Algo deu errado. Tente novamente.'), findsOneWidget);
+    expect(find.text('Tentar de novo'), findsOneWidget);
+  });
+
+  testWidgets('trocar de sala abre a nova conversa e fecha a anterior', (
+    tester,
+  ) async {
+    final chat = _FakeChatRepository();
+    await _pump(tester, size: wide, chat: chat);
+
+    await tester.tap(find.text('Alice e Bob'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Equipe Insight'));
+    await tester.pumpAndSettle();
+
+    expect(chat.opened, ['!a', '!b']);
+    expect(chat.closed, contains('!a'));
   });
 }
