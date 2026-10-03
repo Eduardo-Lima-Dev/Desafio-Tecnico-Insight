@@ -17,12 +17,15 @@ final _first = ChatMessage(
 );
 
 class _FakeChatRepository implements ChatRepository {
-  _FakeChatRepository({this.openError});
+  _FakeChatRepository({this.openError, this.sendError});
 
   final SessionFailure? openError;
+  final SessionFailure? sendError;
   final updates = StreamController<List<ChatMessage>>.broadcast();
   final List<String> opened = [];
   final List<String> closed = [];
+  final List<(String, String)> sent = [];
+  final List<(String, String)> retried = [];
 
   @override
   Future<void> open(String roomId) async {
@@ -32,6 +35,18 @@ class _FakeChatRepository implements ChatRepository {
 
   @override
   Future<void> close(String roomId) async => closed.add(roomId);
+
+  @override
+  Future<void> send(String roomId, String text) async {
+    if (sendError != null) throw sendError!;
+    sent.add((roomId, text));
+  }
+
+  @override
+  Future<void> retry(String roomId, String messageId) async {
+    if (sendError != null) throw sendError!;
+    retried.add((roomId, messageId));
+  }
 
   @override
   Stream<List<ChatMessage>> watchMessages(String roomId) async* {
@@ -124,5 +139,37 @@ void main() {
     await _settle();
 
     expect(container.read(chatMessagesProvider('!a')).hasError, isTrue);
+  });
+
+  test('o envio chama o repositório com a sala e o texto', () async {
+    final repository = _FakeChatRepository();
+    final container = _container(repository);
+
+    await container.read(messageSenderProvider.notifier).send('!a', 'Olá');
+
+    expect(repository.sent, [('!a', 'Olá')]);
+    expect(container.read(messageSenderProvider).hasError, isFalse);
+  });
+
+  test('o reenvio chama o repositório com a sala e a mensagem', () async {
+    final repository = _FakeChatRepository();
+    final container = _container(repository);
+
+    await container.read(messageSenderProvider.notifier).retry('!a', 'm1');
+
+    expect(repository.retried, [('!a', 'm1')]);
+  });
+
+  test('falha ao enviar fica no estado de erro', () async {
+    final repository = _FakeChatRepository(sendError: SessionFailure.unknown);
+    final container = _container(repository)
+      ..listen(messageSenderProvider, (_, _) {});
+
+    await container.read(messageSenderProvider.notifier).send('!a', 'Olá');
+
+    expect(
+      container.read(messageSenderProvider).error,
+      SessionFailure.unknown,
+    );
   });
 }

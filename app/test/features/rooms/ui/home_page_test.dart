@@ -79,6 +79,12 @@ class _FakeChatRepository implements ChatRepository {
   Future<void> close(String roomId) async => closed.add(roomId);
 
   @override
+  Future<void> send(String roomId, String text) async {}
+
+  @override
+  Future<void> retry(String roomId, String messageId) async {}
+
+  @override
   Stream<List<ChatMessage>> watchMessages(String roomId) async* {
     yield messages[roomId] ?? const [];
   }
@@ -447,5 +453,17 @@ void main() {
 
     expect(chat.opened, ['!a', '!b']);
     expect(chat.closed, contains('!a'));
+  });
+
+  testWidgets('a conversa aberta mostra o campo de envio', (tester) async {
+    await _pump(tester, size: wide);
+
+    expect(find.text('Digite uma mensagem...'), findsNothing);
+
+    await tester.tap(find.text('Alice e Bob'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Digite uma mensagem...'), findsOneWidget);
+    expect(find.byTooltip('Enviar'), findsOneWidget);
   });
 }

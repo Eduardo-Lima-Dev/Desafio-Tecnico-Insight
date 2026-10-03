@@ -18,10 +18,16 @@ ChatMessage _message({
   delivery: delivery,
 );
 
-Future<void> _pump(WidgetTester tester, ChatMessage message) {
+Future<void> _pump(
+  WidgetTester tester,
+  ChatMessage message, {
+  VoidCallback? onRetry,
+}) {
   return tester.pumpWidget(
     MaterialApp(
-      home: Scaffold(body: MessageBubble(message: message)),
+      home: Scaffold(
+        body: MessageBubble(message: message, onRetry: onRetry),
+      ),
     ),
   );
 }
@@ -80,5 +86,34 @@ void main() {
     await _pump(tester, message);
 
     expect(find.text('<b>negrito</b> https://exemplo.com'), findsOneWidget);
+  });
+
+  testWidgets('tocar no ícone de falha pede o reenvio', (tester) async {
+    var retries = 0;
+    await _pump(
+      tester,
+      _message(isOwn: true, delivery: DeliveryState.failed),
+      onRetry: () => retries++,
+    );
+
+    await tester.tap(find.byIcon(Icons.error_outline));
+
+    expect(retries, 1);
+  });
+
+  testWidgets('mensagens enviadas ou enviando não oferecem reenvio', (
+    tester,
+  ) async {
+    var retries = 0;
+    await _pump(
+      tester,
+      _message(isOwn: true, delivery: DeliveryState.sending),
+      onRetry: () => retries++,
+    );
+    await tester.tap(find.byIcon(Icons.schedule));
+    await _pump(tester, _message(isOwn: true), onRetry: () => retries++);
+    await tester.tap(find.byIcon(Icons.done));
+
+    expect(retries, 0);
   });
 }
