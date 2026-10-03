@@ -13,7 +13,7 @@ Projeto em desenvolvimento. O que existe hoje:
 - [ ] Integração com o Matrix Rust SDK (login, sessão, salas, mensagens)
 - [ ] Interface
 
-O detalhamento de escopo, requisitos e fluxos está em [docs/PRD.md](docs/PRD.md). O enunciado do desafio está em [docs/desafio-tecnico.md](docs/desafio-tecnico.md).
+O escopo e os requisitos estão em [docs/PRD.md](docs/PRD.md), e os diagramas de fluxo em [docs/FLUXOS.md](docs/FLUXOS.md). O enunciado do desafio está em [docs/desafio-tecnico.md](docs/desafio-tecnico.md).
 
 ## Como as peças se encaixam
 
@@ -33,7 +33,7 @@ Não existe back-end próprio. O homeserver Matrix cumpre esse papel, e o códig
 │   └── rust_builder/    Cargokit: compila o Rust junto com o app em cada sistema
 ├── docker/synapse/      Configuração extra do homeserver local (dev-overrides.yaml)
 ├── docker-compose.yml   Homeserver Matrix (Synapse) para desenvolvimento
-└── docs/                PRD e enunciado do desafio
+└── docs/                PRD, fluxos (diagramas) e enunciado do desafio
 ```
 
 ## Pré-requisitos
