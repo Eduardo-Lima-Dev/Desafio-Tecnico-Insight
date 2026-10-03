@@ -7,10 +7,13 @@ edition = "2021"
 crate-type = ["cdylib", "staticlib"]
 
 [dependencies]
+eyeball-im = "0.9.1"
 flutter_rust_bridge = "=2.13.0"
+futures-util = "0.3"
 matrix-sdk = { version = "0.19.1", features = ["bundled-sqlite"] }
+matrix-sdk-ui = "0.19.1"
 thiserror = "2"
-tokio = { version = "1.53.2", features = ["rt-multi-thread", "macros"] }
+tokio = { version = "1.53.2", features = ["macros", "rt-multi-thread", "sync", "time"] }
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(frb_expand)'] }
