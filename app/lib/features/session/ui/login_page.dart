@@ -64,6 +64,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     final login = ref.watch(loginControllerProvider);
     final isLoading = login.isLoading;
     final error = login.error;
+    final notice = ref.watch(sessionNoticeProvider);
 
     final theme = Theme.of(context);
 
@@ -142,6 +143,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     contentPadding: EdgeInsets.zero,
                     dense: true,
                   ),
+                  if (error == null && notice != null) ...[
+                    const SizedBox(height: 16),
+                    Text(notice.message, textAlign: TextAlign.center),
+                  ],
                   if (error != null) ...[
                     const SizedBox(height: 16),
                     Text(
