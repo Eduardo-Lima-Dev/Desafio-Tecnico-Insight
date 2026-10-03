@@ -4,6 +4,7 @@
 // ignore_for_file: unused_import, unused_element, unnecessary_import, duplicate_ignore, invalid_use_of_internal_member, annotate_overrides, non_constant_identifier_names, curly_braces_in_flow_control_structures, prefer_const_literals_to_create_immutables, unused_field
 
 import 'api/chat.dart';
+import 'api/conversations.dart';
 import 'api/rooms.dart';
 import 'api/session.dart';
 import 'dart:async';
@@ -27,6 +28,10 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   RustStreamSink<List<ChatMessage>> dco_decode_StreamSink_list_chat_message_Sse(
     dynamic raw,
   );
+
+  @protected
+  RustStreamSink<List<InviteSummary>>
+  dco_decode_StreamSink_list_invite_summary_Sse(dynamic raw);
 
   @protected
   RustStreamSink<List<RoomSummary>> dco_decode_StreamSink_list_room_summary_Sse(
@@ -58,13 +63,22 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   ChatMessage dco_decode_chat_message(dynamic raw);
 
   @protected
+  ConversationError dco_decode_conversation_error(dynamic raw);
+
+  @protected
   DeliveryState dco_decode_delivery_state(dynamic raw);
 
   @protected
   int dco_decode_i_32(dynamic raw);
 
   @protected
+  InviteSummary dco_decode_invite_summary(dynamic raw);
+
+  @protected
   List<ChatMessage> dco_decode_list_chat_message(dynamic raw);
+
+  @protected
+  List<InviteSummary> dco_decode_list_invite_summary(dynamic raw);
 
   @protected
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
@@ -94,6 +108,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   SyncStatus dco_decode_sync_status(dynamic raw);
 
   @protected
+  int dco_decode_u_16(dynamic raw);
+
+  @protected
   BigInt dco_decode_u_64(dynamic raw);
 
   @protected
@@ -109,6 +126,10 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   RustStreamSink<List<ChatMessage>> sse_decode_StreamSink_list_chat_message_Sse(
     SseDeserializer deserializer,
   );
+
+  @protected
+  RustStreamSink<List<InviteSummary>>
+  sse_decode_StreamSink_list_invite_summary_Sse(SseDeserializer deserializer);
 
   @protected
   RustStreamSink<List<RoomSummary>> sse_decode_StreamSink_list_room_summary_Sse(
@@ -142,13 +163,24 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   ChatMessage sse_decode_chat_message(SseDeserializer deserializer);
 
   @protected
+  ConversationError sse_decode_conversation_error(SseDeserializer deserializer);
+
+  @protected
   DeliveryState sse_decode_delivery_state(SseDeserializer deserializer);
 
   @protected
   int sse_decode_i_32(SseDeserializer deserializer);
 
   @protected
+  InviteSummary sse_decode_invite_summary(SseDeserializer deserializer);
+
+  @protected
   List<ChatMessage> sse_decode_list_chat_message(SseDeserializer deserializer);
+
+  @protected
+  List<InviteSummary> sse_decode_list_invite_summary(
+    SseDeserializer deserializer,
+  );
 
   @protected
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
@@ -178,6 +210,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   SyncStatus sse_decode_sync_status(SseDeserializer deserializer);
 
   @protected
+  int sse_decode_u_16(SseDeserializer deserializer);
+
+  @protected
   BigInt sse_decode_u_64(SseDeserializer deserializer);
 
   @protected
@@ -195,6 +230,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_StreamSink_list_chat_message_Sse(
     RustStreamSink<List<ChatMessage>> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_StreamSink_list_invite_summary_Sse(
+    RustStreamSink<List<InviteSummary>> self,
     SseSerializer serializer,
   );
 
@@ -235,14 +276,29 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_chat_message(ChatMessage self, SseSerializer serializer);
 
   @protected
+  void sse_encode_conversation_error(
+    ConversationError self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_delivery_state(DeliveryState self, SseSerializer serializer);
 
   @protected
   void sse_encode_i_32(int self, SseSerializer serializer);
 
   @protected
+  void sse_encode_invite_summary(InviteSummary self, SseSerializer serializer);
+
+  @protected
   void sse_encode_list_chat_message(
     List<ChatMessage> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_invite_summary(
+    List<InviteSummary> self,
     SseSerializer serializer,
   );
 
@@ -278,6 +334,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_sync_status(SyncStatus self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_u_16(int self, SseSerializer serializer);
 
   @protected
   void sse_encode_u_64(BigInt self, SseSerializer serializer);

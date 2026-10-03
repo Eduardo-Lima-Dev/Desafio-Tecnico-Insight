@@ -25,6 +25,12 @@ Future<void> retrySend({required String roomId, required String messageId}) =>
       messageId: messageId,
     );
 
+Future<bool> loadOlderMessages({required String roomId, required int count}) =>
+    RustLib.instance.api.crateApiChatLoadOlderMessages(
+      roomId: roomId,
+      count: count,
+    );
+
 Stream<List<ChatMessage>> watchMessages({required String roomId}) =>
     RustLib.instance.api.crateApiChatWatchMessages(roomId: roomId);
 

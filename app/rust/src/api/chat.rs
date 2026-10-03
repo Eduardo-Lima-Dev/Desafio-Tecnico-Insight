@@ -118,6 +118,17 @@ pub async fn retry_send(room_id: String, message_id: String) -> Result<(), ChatE
     Ok(())
 }
 
+pub async fn load_older_messages(room_id: String, count: u16) -> Result<bool, ChatError> {
+    let room_id = RoomId::parse(&room_id).map_err(|_| ChatError::RoomNotFound)?;
+    let timeline = timeline_holder::get(&room_id)
+        .await
+        .ok_or(ChatError::RoomNotFound)?;
+    timeline
+        .paginate_backwards(count)
+        .await
+        .map_err(|_| ChatError::Failed)
+}
+
 pub async fn watch_messages(
     room_id: String,
     sink: StreamSink<Vec<ChatMessage>>,
@@ -383,6 +394,81 @@ mod tests {
 
         close_room(room_id).await;
         let _ = room.leave().await;
+        stop_sync().await;
+        logout().await.unwrap();
+    }
+    #[tokio::test]
+    #[ignore = "exige o homeserver local em execução (docker compose up -d)"]
+    async fn carrega_o_historico_antigo_da_sala() {
+        let dir = std::env::temp_dir()
+            .join(format!("chat-history-{}", std::process::id()))
+            .to_string_lossy()
+            .to_string();
+        login(
+            server(),
+            "alice".into(),
+            "senha123".into(),
+            dir,
+            "pass".into(),
+        )
+        .await
+        .unwrap();
+        start_sync().await.unwrap();
+
+        let mut room_id = None;
+        let _ = timeout(
+            Duration::from_secs(90),
+            watch_rooms_with(|rooms| {
+                room_id = rooms
+                    .iter()
+                    .find(|room| room.name == "Histórico longo")
+                    .map(|room| room.id.clone());
+                room_id.is_none()
+            }),
+        )
+        .await;
+        let room_id = room_id.expect("sala Histórico longo não encontrada");
+
+        open_room(room_id.clone()).await.unwrap();
+        let latest = std::sync::Arc::new(std::sync::Mutex::new(Vec::<ChatMessage>::new()));
+        let sink = latest.clone();
+        let watcher = tokio::spawn(watch_messages_with(room_id.clone(), move |batch| {
+            *sink.lock().unwrap() = batch;
+            true
+        }));
+        tokio::time::sleep(Duration::from_secs(5)).await;
+        let initial = latest.lock().unwrap().len();
+        println!("mensagens iniciais: {initial}");
+        assert!(initial > 0 && initial < 80, "iniciais: {initial}");
+
+        let mut reached_start = false;
+        for round in 1..=10 {
+            reached_start = load_older_messages(room_id.clone(), 30).await.unwrap();
+            tokio::time::sleep(Duration::from_millis(500)).await;
+            println!(
+                "rodada {round}: {} mensagens, chegou ao início: {reached_start}",
+                latest.lock().unwrap().len()
+            );
+            if reached_start {
+                break;
+            }
+        }
+        assert!(reached_start, "deveria ter chegado ao início da sala");
+
+        let messages = latest.lock().unwrap().clone();
+        assert_eq!(messages.len(), 80);
+        assert_eq!(messages[0].text, "Mensagem 01 do histórico de teste");
+        assert_eq!(messages[79].text, "Mensagem 80 do histórico de teste");
+        assert!(messages
+            .windows(2)
+            .all(|pair| pair[0].sent_at_ms <= pair[1].sent_at_ms));
+        let mut ids: Vec<&String> = messages.iter().map(|m| &m.id).collect();
+        ids.sort();
+        ids.dedup();
+        assert_eq!(ids.len(), 80, "não deveria haver mensagens repetidas");
+
+        watcher.abort();
+        close_room(room_id).await;
         stop_sync().await;
         logout().await.unwrap();
     }
