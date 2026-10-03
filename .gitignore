@@ -1,0 +1,10 @@
+# Homeserver local: segredos, chave de assinatura e banco gerados pelo Synapse
+docker/synapse/*
+!docker/synapse/.gitkeep
+
+# Editores e sistema
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db

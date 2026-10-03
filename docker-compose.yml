@@ -1,0 +1,19 @@
+services:
+  synapse:
+    image: matrixdotorg/synapse:latest
+    container_name: synapse
+    restart: unless-stopped
+    environment:
+      - SYNAPSE_SERVER_NAME=localhost
+      - SYNAPSE_REPORT_STATS=no
+      - UID=${SYNAPSE_UID:-1000}
+      - GID=${SYNAPSE_GID:-1000}
+    ports:
+      - 8008:8008
+    volumes:
+      - ./docker/synapse:/data
+    healthcheck:
+      test: ["CMD", "curl", "-fSs", "http://localhost:8008/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
