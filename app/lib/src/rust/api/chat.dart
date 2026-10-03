@@ -16,12 +16,22 @@ Future<void> openRoom({required String roomId}) =>
 Future<void> closeRoom({required String roomId}) =>
     RustLib.instance.api.crateApiChatCloseRoom(roomId: roomId);
 
+Future<void> sendMessage({required String roomId, required String text}) =>
+    RustLib.instance.api.crateApiChatSendMessage(roomId: roomId, text: text);
+
+Future<void> retrySend({required String roomId, required String messageId}) =>
+    RustLib.instance.api.crateApiChatRetrySend(
+      roomId: roomId,
+      messageId: messageId,
+    );
+
 Stream<List<ChatMessage>> watchMessages({required String roomId}) =>
     RustLib.instance.api.crateApiChatWatchMessages(roomId: roomId);
 
 enum ChatError {
   notLoggedIn,
   roomNotFound,
+  messageNotFound,
   failed,
 }
 

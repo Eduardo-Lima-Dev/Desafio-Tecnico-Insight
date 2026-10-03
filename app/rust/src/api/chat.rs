@@ -4,7 +4,7 @@ use eyeball_im::Vector;
 use flutter_rust_bridge::frb;
 use futures_util::{pin_mut, StreamExt};
 use matrix_sdk::ruma::api::client::receipt::create_receipt::v3::ReceiptType;
-use matrix_sdk::ruma::events::room::message::MessageType;
+use matrix_sdk::ruma::events::room::message::{MessageType, RoomMessageEventContent};
 use matrix_sdk::ruma::RoomId;
 use matrix_sdk_ui::timeline::{
     EventSendState, EventTimelineItem, MsgLikeKind, Timeline, TimelineBuilder, TimelineDetails,
@@ -46,6 +46,8 @@ pub enum ChatError {
     NotLoggedIn,
     #[error("room not found")]
     RoomNotFound,
+    #[error("message not found")]
+    MessageNotFound,
     #[error("chat failed")]
     Failed,
 }
@@ -79,6 +81,41 @@ pub async fn close_room(room_id: String) {
                 .remove_room_subscriptions(&[&closed]);
         }
     }
+}
+
+pub async fn send_message(room_id: String, text: String) -> Result<(), ChatError> {
+    let body = text.trim();
+    if body.is_empty() {
+        return Err(ChatError::Failed);
+    }
+    let room_id = RoomId::parse(&room_id).map_err(|_| ChatError::RoomNotFound)?;
+    let timeline = timeline_holder::get(&room_id)
+        .await
+        .ok_or(ChatError::RoomNotFound)?;
+    timeline.room().send_queue().set_enabled(true);
+    timeline
+        .send(RoomMessageEventContent::text_plain(body).into())
+        .await
+        .map_err(|_| ChatError::Failed)?;
+    Ok(())
+}
+
+pub async fn retry_send(room_id: String, message_id: String) -> Result<(), ChatError> {
+    let room_id = RoomId::parse(&room_id).map_err(|_| ChatError::RoomNotFound)?;
+    let timeline = timeline_holder::get(&room_id)
+        .await
+        .ok_or(ChatError::RoomNotFound)?;
+    let handle = timeline
+        .items()
+        .await
+        .iter()
+        .find(|item| item.unique_id().0 == message_id)
+        .and_then(|item| item.as_event())
+        .and_then(|event| event.local_echo_send_handle())
+        .ok_or(ChatError::MessageNotFound)?;
+    timeline.room().send_queue().set_enabled(true);
+    handle.unwedge().await.map_err(|_| ChatError::Failed)?;
+    Ok(())
 }
 
 pub async fn watch_messages(
@@ -275,6 +312,77 @@ mod tests {
         let ended = timeout(Duration::from_secs(5), watcher).await;
         assert!(ended.is_ok(), "o watcher deveria terminar ao fechar a sala");
 
+        stop_sync().await;
+        logout().await.unwrap();
+    }
+    #[tokio::test]
+    #[ignore = "exige o homeserver local em execução (docker compose up -d); cria e abandona uma sala de teste"]
+    async fn envia_mensagens_e_confirma_o_envio() {
+        let dir = std::env::temp_dir()
+            .join(format!("chat-send-{}", std::process::id()))
+            .to_string_lossy()
+            .to_string();
+        login(
+            server(),
+            "alice".into(),
+            "senha123".into(),
+            dir,
+            "pass".into(),
+        )
+        .await
+        .unwrap();
+        start_sync().await.unwrap();
+
+        let client = client_holder::get().await.unwrap();
+        let mut request = matrix_sdk::ruma::api::client::room::create_room::v3::Request::new();
+        request.name = Some(format!("Teste de envio {}", std::process::id()));
+        let room = client.create_room(request).await.unwrap();
+        let room_id = room.room_id().to_string();
+
+        open_room(room_id.clone()).await.unwrap();
+        send_message(room_id.clone(), "Primeira mensagem".into())
+            .await
+            .unwrap();
+        send_message(room_id.clone(), "  Segunda mensagem  ".into())
+            .await
+            .unwrap();
+
+        let mut messages: Vec<ChatMessage> = Vec::new();
+        let _ = timeout(
+            Duration::from_secs(60),
+            watch_messages_with(room_id.clone(), |batch| {
+                let done = batch.len() == 2
+                    && batch
+                        .iter()
+                        .all(|message| message.delivery == DeliveryState::Sent);
+                messages = batch;
+                !done
+            }),
+        )
+        .await;
+        for message in &messages {
+            println!(
+                "- own={:<5} {:?} {:?} {}",
+                message.is_own, message.kind, message.delivery, message.text
+            );
+        }
+
+        assert_eq!(messages.len(), 2);
+        assert_eq!(messages[0].text, "Primeira mensagem");
+        assert_eq!(messages[1].text, "Segunda mensagem");
+        assert!(messages.iter().all(|message| message.is_own));
+        assert!(messages
+            .iter()
+            .all(|message| message.delivery == DeliveryState::Sent));
+
+        assert!(send_message(room_id.clone(), "   ".into()).await.is_err());
+        assert!(matches!(
+            retry_send(room_id.clone(), "inexistente".into()).await,
+            Err(ChatError::MessageNotFound)
+        ));
+
+        close_room(room_id).await;
+        let _ = room.leave().await;
         stop_sync().await;
         logout().await.unwrap();
     }

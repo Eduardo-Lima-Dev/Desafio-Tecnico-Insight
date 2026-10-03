@@ -39,7 +39,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.13.0";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 1993677971;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 171669674;
 
 // Section: executor
 
@@ -272,6 +272,82 @@ fn wire__crate__api__session__restore_session_impl(
                             api_passphrase,
                         )
                         .await?;
+                        std::result::Result::Ok(output_ok)
+                    })()
+                    .await,
+                )
+            }
+        },
+    )
+}
+fn wire__crate__api__chat__retry_send_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "retry_send",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_room_id = <String>::sse_decode(&mut deserializer);
+            let api_message_id = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| async move {
+                transform_result_sse::<_, crate::api::chat::ChatError>(
+                    (move || async move {
+                        let output_ok =
+                            crate::api::chat::retry_send(api_room_id, api_message_id).await?;
+                        std::result::Result::Ok(output_ok)
+                    })()
+                    .await,
+                )
+            }
+        },
+    )
+}
+fn wire__crate__api__chat__send_message_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "send_message",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_room_id = <String>::sse_decode(&mut deserializer);
+            let api_text = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| async move {
+                transform_result_sse::<_, crate::api::chat::ChatError>(
+                    (move || async move {
+                        let output_ok =
+                            crate::api::chat::send_message(api_room_id, api_text).await?;
                         std::result::Result::Ok(output_ok)
                     })()
                     .await,
@@ -555,7 +631,8 @@ impl SseDecode for crate::api::chat::ChatError {
         return match inner {
             0 => crate::api::chat::ChatError::NotLoggedIn,
             1 => crate::api::chat::ChatError::RoomNotFound,
-            2 => crate::api::chat::ChatError::Failed,
+            2 => crate::api::chat::ChatError::MessageNotFound,
+            3 => crate::api::chat::ChatError::Failed,
             _ => unreachable!("Invalid variant for ChatError: {}", inner),
         };
     }
@@ -775,11 +852,13 @@ fn pde_ffi_dispatcher_primary_impl(
         4 => wire__crate__api__session__logout_impl(port, ptr, rust_vec_len, data_len),
         5 => wire__crate__api__chat__open_room_impl(port, ptr, rust_vec_len, data_len),
         6 => wire__crate__api__session__restore_session_impl(port, ptr, rust_vec_len, data_len),
-        7 => wire__crate__api__rooms__start_sync_impl(port, ptr, rust_vec_len, data_len),
-        8 => wire__crate__api__rooms__stop_sync_impl(port, ptr, rust_vec_len, data_len),
-        9 => wire__crate__api__chat__watch_messages_impl(port, ptr, rust_vec_len, data_len),
-        10 => wire__crate__api__rooms__watch_rooms_impl(port, ptr, rust_vec_len, data_len),
-        11 => wire__crate__api__rooms__watch_sync_status_impl(port, ptr, rust_vec_len, data_len),
+        7 => wire__crate__api__chat__retry_send_impl(port, ptr, rust_vec_len, data_len),
+        8 => wire__crate__api__chat__send_message_impl(port, ptr, rust_vec_len, data_len),
+        9 => wire__crate__api__rooms__start_sync_impl(port, ptr, rust_vec_len, data_len),
+        10 => wire__crate__api__rooms__stop_sync_impl(port, ptr, rust_vec_len, data_len),
+        11 => wire__crate__api__chat__watch_messages_impl(port, ptr, rust_vec_len, data_len),
+        12 => wire__crate__api__rooms__watch_rooms_impl(port, ptr, rust_vec_len, data_len),
+        13 => wire__crate__api__rooms__watch_sync_status_impl(port, ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -831,7 +910,8 @@ impl flutter_rust_bridge::IntoDart for crate::api::chat::ChatError {
         match self {
             Self::NotLoggedIn => 0.into_dart(),
             Self::RoomNotFound => 1.into_dart(),
-            Self::Failed => 2.into_dart(),
+            Self::MessageNotFound => 2.into_dart(),
+            Self::Failed => 3.into_dart(),
             _ => unreachable!(),
         }
     }
@@ -1079,7 +1159,8 @@ impl SseEncode for crate::api::chat::ChatError {
             match self {
                 crate::api::chat::ChatError::NotLoggedIn => 0,
                 crate::api::chat::ChatError::RoomNotFound => 1,
-                crate::api::chat::ChatError::Failed => 2,
+                crate::api::chat::ChatError::MessageNotFound => 2,
+                crate::api::chat::ChatError::Failed => 3,
                 _ => {
                     unimplemented!("");
                 }
