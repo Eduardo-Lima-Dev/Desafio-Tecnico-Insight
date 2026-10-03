@@ -279,6 +279,20 @@ Registrar aqui as principais decisões, no formato abaixo.
 - **Alternativas consideradas:** `flutter_lints` (regras mais brandas).
 - **Consequências:** o analyzer é mais rigoroso; código gerado (FRB, `*.g.dart`) é excluído da análise.
 
+### DT-005 — Sincronização e lista de salas: SyncService e RoomListService
+
+- **Contexto:** o app precisa manter as salas atualizadas sem polling próprio e detectar quando o token deixa de valer (RF-05, RF-09, RF-19).
+- **Decisão:** `SyncService` e `RoomListService` do `matrix-sdk-ui` (sliding sync), com modo offline ligado para reconectar sozinho. Ao entrar em offline, o Rust chama `whoami`: se o servidor responder "token desconhecido", o status vira sessão expirada e o app volta ao login com um aviso. O Rust expõe a lista e o status como streams pela ponte.
+- **Alternativas consideradas:** `/sync` clássico com `Client::sync` (mais simples, mas exigiria calcular a última mensagem e a ordenação por conta própria).
+- **Consequências:** a lista já vem ordenada por atividade. As não lidas usam o contador calculado no cliente (mensagens depois da última do próprio usuário, limitado às últimas 20 por sala), porque o contador do servidor vem zerado nesse protocolo. Os watchers terminam por um sinal de parada, para não ficarem pendurados após o logout.
+
+### DT-006 — Conversa: Timeline do matrix-sdk-ui
+
+- **Contexto:** a conversa precisa mostrar as mensagens em tempo real, com remetente, horário e, depois, estado de envio e histórico (RF-12, RF-14, RF-16, RF-17, RF-23).
+- **Decisão:** um `Timeline` por sala aberta, guardado no Rust. O Dart pede para abrir e fechar a sala e observa um stream de mensagens já convertidas (`ChatMessage`). Cada mensagem usa o identificador único do item da timeline, que continua o mesmo quando uma mensagem local vira remota. Mensagens de outros participantes marcam a sala como lida.
+- **Alternativas consideradas:** montar a conversa a partir dos eventos do sync (reimplementaria agrupamento, edições e mensagens locais).
+- **Consequências:** mensagens que não são texto aparecem como "Mensagem não suportada", e as que não puderam ser decifradas aparecem como "Mensagem criptografada".
+
 ---
 
 ## 7. Configuração e Execução
@@ -292,4 +306,7 @@ Registrar aqui as principais decisões, no formato abaixo.
 ## 8. Limitações e Itens Não Concluídos
 
 - Não são carregadas imagens: os avatares das salas são só a inicial do nome (RF-22), e não há envio nem exibição de anexos.
+- Salas com criptografia ponta a ponta: o app não decifra mensagens, e mostra "Mensagem criptografada" no lugar do texto. Na lista de salas, a última mensagem de uma sala criptografada aparece como "Sem mensagens".
+- O contador de não lidas considera apenas as últimas 20 mensagens de cada sala.
+- Só mensagens de texto são exibidas; imagens, arquivos, enquetes e demais tipos aparecem como "Mensagem não suportada".
 - Demais itens: A DEFINIR ao longo do desenvolvimento.
