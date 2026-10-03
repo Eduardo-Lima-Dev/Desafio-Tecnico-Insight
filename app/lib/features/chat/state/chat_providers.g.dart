@@ -239,3 +239,100 @@ abstract class _$MessageSender extends $AsyncNotifier<void> {
     return element.handleCreate(ref, build);
   }
 }
+
+@ProviderFor(HistoryLoader)
+final historyLoaderProvider = HistoryLoaderFamily._();
+
+final class HistoryLoaderProvider
+    extends $NotifierProvider<HistoryLoader, HistoryState> {
+  HistoryLoaderProvider._({
+    required HistoryLoaderFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'historyLoaderProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$historyLoaderHash();
+
+  @override
+  String toString() {
+    return r'historyLoaderProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  HistoryLoader create() => HistoryLoader();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(HistoryState value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<HistoryState>(value),
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is HistoryLoaderProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$historyLoaderHash() => r'0bc77018fb8203e0a8294fc68bec5a54b919ddb0';
+
+final class HistoryLoaderFamily extends $Family
+    with
+        $ClassFamilyOverride<
+          HistoryLoader,
+          HistoryState,
+          HistoryState,
+          HistoryState,
+          String
+        > {
+  HistoryLoaderFamily._()
+    : super(
+        retry: null,
+        name: r'historyLoaderProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  HistoryLoaderProvider call(String roomId) =>
+      HistoryLoaderProvider._(argument: roomId, from: this);
+
+  @override
+  String toString() => r'historyLoaderProvider';
+}
+
+abstract class _$HistoryLoader extends $Notifier<HistoryState> {
+  late final _$args = ref.$arg as String;
+  String get roomId => _$args;
+
+  HistoryState build(String roomId);
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<HistoryState, HistoryState>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<HistoryState, HistoryState>,
+              HistoryState,
+              Object?,
+              Object?
+            >;
+    return element.handleCreate(ref, () => build(_$args));
+  }
+}

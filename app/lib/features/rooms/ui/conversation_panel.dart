@@ -79,6 +79,7 @@ class ConversationPanel extends ConsumerWidget {
               ),
             ),
             data: (items) => MessageList(
+              roomId: room.id,
               messages: items,
               onRetry: (message) => unawaited(
                 ref

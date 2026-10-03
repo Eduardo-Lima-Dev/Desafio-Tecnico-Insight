@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:app/features/chat/data/chat_repository.dart';
 import 'package:app/features/chat/data/matrix_chat_repository.dart';
 import 'package:app/features/chat/domain/chat_message.dart';
+import 'package:app/features/chat/domain/history_state.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'chat_providers.g.dart';
@@ -40,5 +41,24 @@ class MessageSender extends _$MessageSender {
     state = const AsyncLoading();
     final result = await AsyncValue.guard(action);
     if (ref.mounted) state = result;
+  }
+}
+
+@riverpod
+class HistoryLoader extends _$HistoryLoader {
+  @override
+  HistoryState build(String roomId) => const HistoryState();
+
+  Future<void> loadOlder() async {
+    if (state.loading || state.reachedStart) return;
+    state = const HistoryState(loading: true);
+    try {
+      final reachedStart = await ref
+          .read(chatRepositoryProvider)
+          .loadOlder(roomId);
+      if (ref.mounted) state = HistoryState(reachedStart: reachedStart);
+    } on Object {
+      if (ref.mounted) state = const HistoryState(failed: true);
+    }
   }
 }

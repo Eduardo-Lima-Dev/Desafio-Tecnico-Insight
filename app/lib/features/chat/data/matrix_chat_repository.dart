@@ -45,6 +45,15 @@ class MatrixChatRepository implements ChatRepository {
     }
   }
 
+  @override
+  Future<bool> loadOlder(String roomId) async {
+    try {
+      return await rust.loadOlderMessages(roomId: roomId, count: 30);
+    } on Object catch (error) {
+      throw _toFailure(error);
+    }
+  }
+
   ChatMessage _toMessage(rust.ChatMessage message) => ChatMessage(
     id: message.id,
     senderId: message.senderId,

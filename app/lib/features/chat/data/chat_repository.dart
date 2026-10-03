@@ -10,4 +10,6 @@ abstract interface class ChatRepository {
   Future<void> send(String roomId, String text);
 
   Future<void> retry(String roomId, String messageId);
+
+  Future<bool> loadOlder(String roomId);
 }
