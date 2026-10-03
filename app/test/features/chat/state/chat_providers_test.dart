@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:app/features/chat/data/chat_repository.dart';
 import 'package:app/features/chat/domain/chat_message.dart';
+import 'package:app/features/chat/domain/history_state.dart';
 import 'package:app/features/chat/state/chat_providers.dart';
 import 'package:app/features/session/domain/session_failure.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -17,10 +18,20 @@ final _first = ChatMessage(
 );
 
 class _FakeChatRepository implements ChatRepository {
-  _FakeChatRepository({this.openError, this.sendError});
+  _FakeChatRepository({
+    this.openError,
+    this.sendError,
+    this.olderError,
+    this.reachedStart = true,
+    this.olderGate,
+  });
 
   final SessionFailure? openError;
   final SessionFailure? sendError;
+  final SessionFailure? olderError;
+  final bool reachedStart;
+  final Completer<void>? olderGate;
+  int olderCalls = 0;
   final updates = StreamController<List<ChatMessage>>.broadcast();
   final List<String> opened = [];
   final List<String> closed = [];
@@ -46,6 +57,14 @@ class _FakeChatRepository implements ChatRepository {
   Future<void> retry(String roomId, String messageId) async {
     if (sendError != null) throw sendError!;
     retried.add((roomId, messageId));
+  }
+
+  @override
+  Future<bool> loadOlder(String roomId) async {
+    olderCalls++;
+    await olderGate?.future;
+    if (olderError != null) throw olderError!;
+    return reachedStart;
   }
 
   @override
@@ -171,5 +190,98 @@ void main() {
       container.read(messageSenderProvider).error,
       SessionFailure.unknown,
     );
+  });
+
+  test('carregar histórico marca o início quando o Rust avisa', () async {
+    final repository = _FakeChatRepository();
+    final container = _container(repository)
+      ..listen(historyLoaderProvider('!a'), (_, _) {});
+
+    await container.read(historyLoaderProvider('!a').notifier).loadOlder();
+
+    expect(
+      container.read(historyLoaderProvider('!a')),
+      const HistoryState(reachedStart: true),
+    );
+  });
+
+  test(
+    'carregar histórico sem chegar ao início permite novas páginas',
+    () async {
+      final repository = _FakeChatRepository(reachedStart: false);
+      final container = _container(repository)
+        ..listen(historyLoaderProvider('!a'), (_, _) {});
+      final loader = container.read(historyLoaderProvider('!a').notifier);
+
+      await loader.loadOlder();
+      await loader.loadOlder();
+
+      expect(repository.olderCalls, 2);
+      expect(container.read(historyLoaderProvider('!a')), const HistoryState());
+    },
+  );
+
+  test('depois de chegar ao início não carrega mais', () async {
+    final repository = _FakeChatRepository();
+    final container = _container(repository)
+      ..listen(historyLoaderProvider('!a'), (_, _) {});
+    final loader = container.read(historyLoaderProvider('!a').notifier);
+
+    await loader.loadOlder();
+    await loader.loadOlder();
+
+    expect(repository.olderCalls, 1);
+  });
+
+  test('chamadas simultâneas carregam uma página só', () async {
+    final gate = Completer<void>();
+    final repository = _FakeChatRepository(olderGate: gate);
+    final container = _container(repository)
+      ..listen(historyLoaderProvider('!a'), (_, _) {});
+    final loader = container.read(historyLoaderProvider('!a').notifier);
+
+    final first = loader.loadOlder();
+    final second = loader.loadOlder();
+    expect(
+      container.read(historyLoaderProvider('!a')),
+      const HistoryState(loading: true),
+    );
+    gate.complete();
+    await Future.wait([first, second]);
+
+    expect(repository.olderCalls, 1);
+  });
+
+  test(
+    'falha ao carregar o histórico marca o erro e permite tentar de novo',
+    () async {
+      final repository = _FakeChatRepository(
+        olderError: SessionFailure.network,
+      );
+      final container = _container(repository)
+        ..listen(historyLoaderProvider('!a'), (_, _) {});
+      final loader = container.read(historyLoaderProvider('!a').notifier);
+
+      await loader.loadOlder();
+      expect(
+        container.read(historyLoaderProvider('!a')),
+        const HistoryState(failed: true),
+      );
+
+      await loader.loadOlder();
+      expect(repository.olderCalls, 2);
+    },
+  );
+
+  test('cada sala tem o seu próprio estado de histórico', () async {
+    final repository = _FakeChatRepository();
+    final container = _container(repository)
+      ..listen(historyLoaderProvider('!a'), (_, _) {})
+      ..listen(historyLoaderProvider('!b'), (_, _) {});
+
+    await container.read(historyLoaderProvider('!a').notifier).loadOlder();
+
+    expect(container.read(historyLoaderProvider('!a')).reachedStart, isTrue);
+    expect(container.read(historyLoaderProvider('!b')).reachedStart, isFalse);
   });
 }

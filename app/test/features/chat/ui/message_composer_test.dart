@@ -31,6 +31,9 @@ class _FakeChatRepository implements ChatRepository {
 
   @override
   Future<void> retry(String roomId, String messageId) async {}
+
+  @override
+  Future<bool> loadOlder(String roomId) async => true;
 }
 
 Future<void> _pump(

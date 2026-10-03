@@ -3,6 +3,10 @@ import 'dart:async';
 import 'package:app/features/chat/data/chat_repository.dart';
 import 'package:app/features/chat/domain/chat_message.dart';
 import 'package:app/features/chat/state/chat_providers.dart';
+import 'package:app/features/conversations/data/conversations_repository.dart';
+import 'package:app/features/conversations/domain/conversation_failure.dart';
+import 'package:app/features/conversations/domain/room_invite.dart';
+import 'package:app/features/conversations/state/conversations_providers.dart';
 import 'package:app/features/rooms/data/rooms_repository.dart';
 import 'package:app/features/rooms/domain/room_summary.dart';
 import 'package:app/features/rooms/domain/sync_status.dart';
@@ -85,9 +89,40 @@ class _FakeChatRepository implements ChatRepository {
   Future<void> retry(String roomId, String messageId) async {}
 
   @override
+  Future<bool> loadOlder(String roomId) async => true;
+
+  @override
   Stream<List<ChatMessage>> watchMessages(String roomId) async* {
     yield messages[roomId] ?? const [];
   }
+}
+
+class _FakeConversationsRepository implements ConversationsRepository {
+  _FakeConversationsRepository({this.invites = const [], this.failure});
+
+  final List<RoomInvite> invites;
+  final ConversationFailure? failure;
+  final List<String> created = [];
+  final List<String> accepted = [];
+  final List<String> declined = [];
+
+  @override
+  Future<String> create(String userId) async {
+    if (failure != null) throw failure!;
+    created.add(userId);
+    return '!b';
+  }
+
+  @override
+  Stream<List<RoomInvite>> watchInvites() async* {
+    yield invites;
+  }
+
+  @override
+  Future<void> accept(String roomId) async => accepted.add(roomId);
+
+  @override
+  Future<void> decline(String roomId) async => declined.add(roomId);
 }
 
 class _FakeSessionRepository implements SessionRepository {
@@ -113,6 +148,7 @@ Future<void> _pump(
   _FakeRoomsRepository? rooms,
   _FakeSessionRepository? session,
   _FakeChatRepository? chat,
+  _FakeConversationsRepository? conversations,
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
@@ -128,6 +164,9 @@ Future<void> _pump(
           session ?? _FakeSessionRepository(),
         ),
         chatRepositoryProvider.overrideWithValue(chat ?? _FakeChatRepository()),
+        conversationsRepositoryProvider.overrideWithValue(
+          conversations ?? _FakeConversationsRepository(),
+        ),
       ],
       child: const MaterialApp(home: HomePage(session: _alice)),
     ),
@@ -465,5 +504,160 @@ void main() {
 
     expect(find.text('Digite uma mensagem...'), findsOneWidget);
     expect(find.byTooltip('Enviar'), findsOneWidget);
+  });
+
+  testWidgets('a lista tem o botão de nova conversa', (tester) async {
+    await _pump(tester, size: wide);
+
+    expect(find.text('Conversas'), findsOneWidget);
+    expect(find.byTooltip('Nova conversa'), findsOneWidget);
+  });
+
+  testWidgets('criar uma conversa abre a sala criada', (tester) async {
+    final conversations = _FakeConversationsRepository();
+    await _pump(tester, size: wide, conversations: conversations);
+
+    await tester.tap(find.byTooltip('Nova conversa'));
+    await tester.pumpAndSettle();
+    expect(find.text('Nova conversa'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField), 'bob');
+    await tester.tap(find.text('Criar'));
+    await tester.pumpAndSettle();
+
+    expect(conversations.created, ['@bob:localhost']);
+    expect(find.text('Nova conversa'), findsNothing);
+    expect(find.text('Selecione uma sala'), findsNothing);
+    expect(find.text('Equipe Insight'), findsNWidgets(2));
+  });
+
+  testWidgets('usuário inválido mostra o erro e mantém o diálogo', (
+    tester,
+  ) async {
+    final conversations = _FakeConversationsRepository();
+    await _pump(tester, size: wide, conversations: conversations);
+
+    await tester.tap(find.byTooltip('Nova conversa'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'bo b');
+    await tester.tap(find.text('Criar'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Informe um usuário válido, por exemplo @bob:localhost.'),
+      findsOneWidget,
+    );
+    expect(find.text('Nova conversa'), findsOneWidget);
+    expect(conversations.created, isEmpty);
+  });
+
+  testWidgets('usuário inexistente mostra a mensagem do servidor', (
+    tester,
+  ) async {
+    final conversations = _FakeConversationsRepository(
+      failure: ConversationFailure.userNotFound,
+    );
+    await _pump(tester, size: wide, conversations: conversations);
+
+    await tester.tap(find.byTooltip('Nova conversa'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), '@fantasma:localhost');
+    await tester.tap(find.text('Criar'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Usuário não encontrado.'), findsOneWidget);
+    expect(find.text('Nova conversa'), findsOneWidget);
+  });
+
+  testWidgets('cancelar fecha o diálogo sem criar nada', (tester) async {
+    final conversations = _FakeConversationsRepository();
+    await _pump(tester, size: wide, conversations: conversations);
+
+    await tester.tap(find.byTooltip('Nova conversa'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Cancelar'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Nova conversa'), findsNothing);
+    expect(conversations.created, isEmpty);
+  });
+
+  testWidgets('sem convites a seção de convites não aparece', (tester) async {
+    await _pump(tester, size: wide);
+
+    expect(find.text('Convites'), findsNothing);
+  });
+
+  testWidgets('convites aparecem acima das conversas', (tester) async {
+    const invite = RoomInvite(
+      roomId: '!i',
+      name: 'Bob',
+      inviterId: '@bob:localhost',
+      inviterName: 'Bob',
+    );
+    await _pump(
+      tester,
+      size: wide,
+      conversations: _FakeConversationsRepository(invites: const [invite]),
+    );
+
+    expect(find.text('Convites'), findsOneWidget);
+    expect(find.text('Convite de Bob'), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.text('Convite de Bob')).dy,
+      lessThan(tester.getTopLeft(find.text('Alice e Bob')).dy),
+    );
+  });
+
+  testWidgets('aceitar e recusar um convite chamam o repositório', (
+    tester,
+  ) async {
+    const invites = [
+      RoomInvite(
+        roomId: '!i1',
+        name: 'Bob',
+        inviterId: '@bob:localhost',
+        inviterName: 'Bob',
+      ),
+      RoomInvite(
+        roomId: '!i2',
+        name: 'Carol',
+        inviterId: '@carol:localhost',
+        inviterName: 'Carol',
+      ),
+    ];
+    final conversations = _FakeConversationsRepository(invites: invites);
+    await _pump(tester, size: wide, conversations: conversations);
+
+    await tester.tap(find.byTooltip('Aceitar').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Recusar').last);
+    await tester.pumpAndSettle();
+
+    expect(conversations.accepted, ['!i1']);
+    expect(conversations.declined, ['!i2']);
+  });
+
+  testWidgets('só convites, sem conversas, não mostra o estado vazio', (
+    tester,
+  ) async {
+    const invite = RoomInvite(
+      roomId: '!i',
+      name: 'Bob',
+      inviterId: '@bob:localhost',
+      inviterName: 'Bob',
+    );
+    await _pump(
+      tester,
+      size: wide,
+      rooms: _FakeRoomsRepository(rooms: const []),
+      conversations: _FakeConversationsRepository(invites: const [invite]),
+    );
+
+    expect(find.text('Convite de Bob'), findsOneWidget);
+    expect(
+      find.text('Você ainda não participa de nenhuma sala.'),
+      findsNothing,
+    );
   });
 }
