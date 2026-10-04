@@ -40,7 +40,7 @@ Este documento descreve os requisitos funcionais, não funcionais, a arquitetura
 | RF-03 | Após login bem-sucedido, a sessão é persistida de forma segura.                                        |
 | RF-04 | Ao abrir o app, a sessão salva é restaurada automaticamente, sem pedir login de novo.                  |
 | RF-05 | Se o servidor deixar de aceitar o token da sessão, o app apaga os dados locais e volta ao login com o aviso "Sua sessão expirou". Isso é detectado na restauração ou durante a sincronização. Uma falha de restauração por outro motivo volta ao login sem apagar os dados salvos. |
-| RF-06 | O logout invalida a sessão no homeserver, apaga os dados locais e volta ao login. O botão Sair, com ícone de logout, fica no rodapé da lista de salas, ao lado do usuário logado. |
+| RF-06 | O logout invalida a sessão no homeserver, apaga os dados locais e volta ao login. O logout apaga os dados locais mesmo que o servidor não responda. O botão Sair, com ícone de logout, fica no rodapé da lista de salas, ao lado do usuário logado. |
 | RF-21 | O login oferece a opção "Salvar servidor": se marcada, o servidor informado é lembrado e já vem preenchido no próximo login. Usuário e senha nunca são salvos. |
 
 ### 3.2. Salas
@@ -73,7 +73,7 @@ Este documento descreve os requisitos funcionais, não funcionais, a arquitetura
 | RF-18 | Telas exibem estados de carregamento, vazio e erro (ex.: "nenhuma sala", "sem conexão").           |
 | RF-19 | Perda de conexão é sinalizada por um aviso fixo no topo da tela principal, visível em qualquer largura e com qualquer conversa aberta. A sincronização retoma sozinha quando a rede volta. Se a sincronização falhar de forma irrecuperável, o aviso oferece o botão "Tentar de novo". |
 | RF-20 | Erros vindos do Rust são traduzidos em mensagens claras, sem expor detalhes técnicos ou tokens.    |
-| RF-24 | Em janela larga, a tela principal mostra salas e conversa lado a lado. Em janela estreita, mostra só a lista, e a conversa abre por cima dela. |
+| RF-24 | Em janela larga (a partir de 720 px), a tela principal mostra salas e conversa lado a lado. Em janela estreita, mostra só a lista, e a conversa abre por cima dela. |
 | RF-25 | Quando nenhuma sala está selecionada, o painel da conversa mostra a mensagem "Selecione uma sala". |
 | RF-26 | O usuário cria uma conversa direta pelo botão "Nova conversa", informando o identificador de outro usuário (por exemplo `@bob:localhost` ou só `bob`). Se já existir uma conversa direta com essa pessoa, ela é reaberta em vez de duplicada. |
 | RF-27 | Convites recebidos aparecem em uma seção "Convites" no topo da lista, com as ações Aceitar e Recusar. Aceitar abre a conversa. |
@@ -215,7 +215,8 @@ Registrar aqui as principais decisões, no formato abaixo.
 ## 8. Limitações e Itens Não Concluídos
 
 - Não são carregadas imagens: os avatares das salas são só a inicial do nome (RF-22), e não há envio nem exibição de anexos.
-- Plataformas: o desenvolvimento e os testes manuais foram feitos no Linux. macOS e Windows estão configurados (permissão de rede do macOS, ícones e dependências), mas não foram executados.
+- Plataformas: o desenvolvimento e os testes manuais foram feitos no Linux, e o app também foi executado no macOS sem ajustes. O Windows está configurado (ícones e dependências), mas ainda não foi executado.
+- Homeservers: só o Synapse local do Docker foi testado. Outros servidores, inclusive o `matrix.org`, não foram testados; o app usa o sliding sync, que o servidor precisa suportar.
 - Salas com criptografia ponta a ponta: o app não decifra mensagens, e mostra "Mensagem criptografada" no lugar do texto. Na lista de salas, a última mensagem de uma sala criptografada aparece como "Sem mensagens".
 - Só é possível criar conversas diretas 1:1 (sem grupos, sem busca de usuários); as conversas criadas pelo app não são criptografadas.
 - Só é possível enviar texto simples: não há edição, exclusão, resposta nem anexos.

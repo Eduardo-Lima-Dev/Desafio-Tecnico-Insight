@@ -6,12 +6,16 @@ Alvos: Linux, macOS e Windows.
 
 ## Status
 
-Projeto em desenvolvimento. O que existe hoje:
+O app está funcional. O que ele faz hoje:
 
-- [x] Projeto Flutter com a ponte Flutter Rust Bridge configurada (exemplo `greet` funcionando)
-- [x] Homeserver Matrix local com Docker
-- [ ] Integração com o Matrix Rust SDK (login, sessão, salas, mensagens)
-- [ ] Interface
+- [x] Login em um homeserver Matrix, com a opção de lembrar o servidor e botão para mostrar a senha
+- [x] Sessão guardada no cofre do sistema, restaurada ao abrir o app e encerrada no logout
+- [x] Lista de salas ordenada por atividade, com última mensagem, horário e mensagens não lidas
+- [x] Conversa com mensagens em tempo real, envio (Enter envia, Shift+Enter quebra linha), reenvio de mensagens que falharam e histórico ao rolar até o topo
+- [x] Nova conversa (conversa direta com outro usuário) e convites, com aceitar e recusar
+- [x] Avisos de falta de conexão e de sessão expirada
+- [x] Layout responsivo: lista e conversa lado a lado em janela larga, uma de cada vez em janela estreita
+- [x] Homeserver Matrix local com Docker, já com usuários e conversas de teste
 
 O escopo e os requisitos estão em [docs/PRD.md](docs/PRD.md), e os diagramas de fluxo em [docs/FLUXOS.md](docs/FLUXOS.md). O enunciado do desafio está em [docs/desafio-tecnico.md](docs/desafio-tecnico.md).
 
@@ -143,7 +147,7 @@ docker compose down -v     # desliga e apaga tudo, voltando ao estado inicial
 
 Os dados ficam em um volume nomeado do Docker (`synapse-data`), então não há pastas nem permissões para ajustar no Linux, macOS ou Windows. Se a porta 8008 já estiver em uso, suba em outra com `SYNAPSE_PORT=18008 docker compose up -d` e use essa porta no app.
 
-Alternativa sem Docker: usar uma conta em `https://matrix.org`, informando `https://matrix.org` como homeserver.
+O app foi desenvolvido e testado apenas contra o Synapse local deste repositório. Outros homeservers, inclusive o `matrix.org`, **não foram testados**: o app usa o *sliding sync* do Matrix, que o servidor precisa suportar.
 
 ## Rodar o app
 
@@ -169,7 +173,7 @@ flutter_rust_bridge_codegen generate
 | Sistema | Situação |
 | ------- | -------- |
 | Linux   | Desenvolvido e testado |
-| macOS   | Configurado, ainda não testado |
+| macOS   | Testado: executa normalmente |
 | Windows | Configurado, ainda não testado |
 
 O Flutter desktop não compila de um sistema para outro: para rodar no macOS é preciso estar em um Mac, e no Windows, em um Windows.
@@ -183,6 +187,8 @@ O Flutter desktop não compila de um sistema para outro: para rodar no macOS é 
 
 ## Limitações conhecidas
 
-- A integração com o Matrix Rust SDK ainda não foi implementada.
-- macOS e Windows não foram testados.
-- O registro completo de limitações será mantido em [docs/PRD.md](docs/PRD.md).
+- **Windows:** configurado, mas ainda não executado.
+- **Outros homeservers:** só o Synapse local foi testado (veja acima).
+- **Criptografia ponta a ponta:** o app não decifra mensagens; elas aparecem como "Mensagem criptografada". As conversas criadas pelo app não são criptografadas.
+- **Escopo das mensagens:** só texto simples, em conversas diretas 1:1. Não há grupos, anexos, edição nem exclusão.
+- O registro completo de limitações está em [docs/PRD.md](docs/PRD.md), na seção 8.
