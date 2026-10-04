@@ -1,9 +1,13 @@
 name: CI
 
+# Só roda quando o código do app muda. Alterações em docs, README e workflows
+# não disparam o CI. Para rodar à mão, use "Run workflow" na aba Actions.
 on:
   push:
     branches: [main]
+    paths: ['app/**']
   pull_request:
+    paths: ['app/**']
   workflow_dispatch:
 
 permissions:
