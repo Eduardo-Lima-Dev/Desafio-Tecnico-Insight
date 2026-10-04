@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:app/features/session/data/app_secure_storage.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 const _sessionKey = 'matrix_session';
@@ -8,7 +9,7 @@ const _passphraseKey = 'matrix_store_passphrase';
 
 class SessionStore {
   SessionStore({FlutterSecureStorage? storage})
-    : _storage = storage ?? const FlutterSecureStorage();
+    : _storage = storage ?? appSecureStorage;
 
   final FlutterSecureStorage _storage;
 
