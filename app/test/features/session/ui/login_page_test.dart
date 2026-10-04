@@ -81,6 +81,13 @@ String _serverText(WidgetTester tester) => tester
     .text;
 
 void main() {
+  testWidgets('mostra o nome do app e a frase de boas-vindas', (tester) async {
+    await _pump(tester, _FakeSavedServerRepository());
+
+    expect(find.text('Insight Matrix'), findsOneWidget);
+    expect(find.text('Entre com sua conta Matrix'), findsOneWidget);
+  });
+
   testWidgets('sem servidor salvo, o campo começa vazio e desmarcado', (
     tester,
   ) async {

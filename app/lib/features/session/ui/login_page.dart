@@ -69,127 +69,217 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     final notice = ref.watch(sessionNoticeProvider);
 
     final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
 
     return Scaffold(
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 360),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    'Login',
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.headlineLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Center(
-                    child: Image.asset(
-                      'assets/icon/app_icon.png',
-                      width: 120,
-                      height: 120,
-                      semanticLabel: 'Logotipo do aplicativo',
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                  TextFormField(
-                    controller: _username,
-                    enabled: !isLoading,
-                    decoration: const InputDecoration(
-                      labelText: 'Usuário',
-                      border: OutlineInputBorder(),
-                    ),
-                    validator: _required,
-                    textInputAction: TextInputAction.next,
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _password,
-                    enabled: !isLoading,
-                    obscureText: _obscurePassword,
-                    decoration: InputDecoration(
-                      labelText: 'Senha',
-                      border: const OutlineInputBorder(),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscurePassword
-                              ? Icons.visibility_outlined
-                              : Icons.visibility_off_outlined,
+      body: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              scheme.primaryContainer.withValues(alpha: 0.55),
+              scheme.surface,
+              scheme.tertiaryContainer.withValues(alpha: 0.35),
+            ],
+          ),
+        ),
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 420),
+              child: Card(
+                elevation: 6,
+                shadowColor: scheme.shadow.withValues(alpha: 0.25),
+                surfaceTintColor: Colors.transparent,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Center(
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(20),
+                            child: Image.asset(
+                              'assets/icon/app_icon.png',
+                              width: 72,
+                              height: 72,
+                              semanticLabel: 'Logotipo do aplicativo',
+                            ),
+                          ),
                         ),
-                        tooltip: _obscurePassword
-                            ? 'Mostrar senha'
-                            : 'Ocultar senha',
-                        onPressed: () => setState(
-                          () => _obscurePassword = !_obscurePassword,
+                        const SizedBox(height: 16),
+                        Text(
+                          'Insight Matrix',
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
-                      ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Entre com sua conta Matrix',
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
+                        const SizedBox(height: 28),
+                        TextFormField(
+                          controller: _username,
+                          enabled: !isLoading,
+                          decoration: const InputDecoration(
+                            labelText: 'Usuário',
+                            prefixIcon: Icon(Icons.person_outline),
+                          ),
+                          validator: _required,
+                          textInputAction: TextInputAction.next,
+                        ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: _password,
+                          enabled: !isLoading,
+                          obscureText: _obscurePassword,
+                          decoration: InputDecoration(
+                            labelText: 'Senha',
+                            prefixIcon: const Icon(Icons.lock_outline),
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscurePassword
+                                    ? Icons.visibility_outlined
+                                    : Icons.visibility_off_outlined,
+                              ),
+                              tooltip: _obscurePassword
+                                  ? 'Mostrar senha'
+                                  : 'Ocultar senha',
+                              onPressed: () => setState(
+                                () => _obscurePassword = !_obscurePassword,
+                              ),
+                            ),
+                          ),
+                          validator: _required,
+                          textInputAction: TextInputAction.next,
+                        ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: _homeserver,
+                          enabled: !isLoading,
+                          keyboardType: TextInputType.url,
+                          decoration: const InputDecoration(
+                            labelText: 'Servidor',
+                            hintText: 'https://matrix.org',
+                            prefixIcon: Icon(Icons.dns_outlined),
+                          ),
+                          validator: _required,
+                          onFieldSubmitted: (_) => _submit(),
+                        ),
+                        CheckboxListTile(
+                          value: _saveServer,
+                          onChanged: isLoading
+                              ? null
+                              : (value) => setState(
+                                  () => _saveServer = value ?? false,
+                                ),
+                          title: const Text('Salvar servidor'),
+                          controlAffinity: ListTileControlAffinity.leading,
+                          contentPadding: EdgeInsets.zero,
+                          dense: true,
+                        ),
+                        if (error == null && notice != null) ...[
+                          const SizedBox(height: 8),
+                          _Banner(
+                            icon: Icons.info_outline,
+                            message: notice.message,
+                            background: scheme.secondaryContainer,
+                            foreground: scheme.onSecondaryContainer,
+                          ),
+                        ],
+                        if (error != null) ...[
+                          const SizedBox(height: 8),
+                          _Banner(
+                            icon: Icons.error_outline,
+                            message: error is SessionFailure
+                                ? error.message
+                                : SessionFailure.unknown.message,
+                            background: scheme.errorContainer,
+                            foreground: scheme.onErrorContainer,
+                          ),
+                        ],
+                        const SizedBox(height: 20),
+                        FilledButton(
+                          onPressed: isLoading ? null : _submit,
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 200),
+                            child: isLoading
+                                ? const Row(
+                                    key: ValueKey('loading'),
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      SizedBox(
+                                        height: 18,
+                                        width: 18,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
+                                      ),
+                                      SizedBox(width: 12),
+                                      Text('Entrando…'),
+                                    ],
+                                  )
+                                : const Text('Entrar', key: ValueKey('idle')),
+                          ),
+                        ),
+                      ],
                     ),
-                    validator: _required,
-                    textInputAction: TextInputAction.next,
                   ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _homeserver,
-                    enabled: !isLoading,
-                    keyboardType: TextInputType.url,
-                    decoration: const InputDecoration(
-                      labelText: 'Servidor',
-                      hintText: 'https://matrix.org',
-                      border: OutlineInputBorder(),
-                    ),
-                    validator: _required,
-                    onFieldSubmitted: (_) => _submit(),
-                  ),
-                  CheckboxListTile(
-                    value: _saveServer,
-                    onChanged: isLoading
-                        ? null
-                        : (value) =>
-                              setState(() => _saveServer = value ?? false),
-                    title: const Text('Salvar servidor'),
-                    controlAffinity: ListTileControlAffinity.leading,
-                    contentPadding: EdgeInsets.zero,
-                    dense: true,
-                  ),
-                  if (error == null && notice != null) ...[
-                    const SizedBox(height: 16),
-                    Text(notice.message, textAlign: TextAlign.center),
-                  ],
-                  if (error != null) ...[
-                    const SizedBox(height: 16),
-                    Text(
-                      error is SessionFailure
-                          ? error.message
-                          : SessionFailure.unknown.message,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: theme.colorScheme.error),
-                    ),
-                  ],
-                  const SizedBox(height: 24),
-                  FilledButton(
-                    style: FilledButton.styleFrom(
-                      minimumSize: const Size.fromHeight(48),
-                    ),
-                    onPressed: isLoading ? null : _submit,
-                    child: isLoading
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Text('Entrar'),
-                  ),
-                ],
+                ),
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Banner extends StatelessWidget {
+  const _Banner({
+    required this.icon,
+    required this.message,
+    required this.background,
+    required this.foreground,
+  });
+
+  final IconData icon;
+  final String message;
+  final Color background;
+  final Color foreground;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            Icon(icon, color: foreground, size: 20),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(message, style: TextStyle(color: foreground)),
+            ),
+          ],
         ),
       ),
     );

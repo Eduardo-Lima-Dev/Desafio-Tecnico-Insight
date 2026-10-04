@@ -35,6 +35,11 @@ flutter:
   assets:
     - assets/icon/app_icon.png
 
+  fonts:
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter.ttf
+
 # Gera os ícones de macOS e Windows com: dart run flutter_launcher_icons
 flutter_launcher_icons:
   image_path: assets/icon/app_icon.png
