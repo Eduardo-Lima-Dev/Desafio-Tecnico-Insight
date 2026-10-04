@@ -9,6 +9,9 @@ import 'package:app/features/rooms/state/rooms_providers.dart';
 import 'package:app/features/rooms/ui/room_tile.dart';
 import 'package:app/features/session/domain/session_failure.dart';
 import 'package:app/features/session/ui/failure_message.dart';
+import 'package:app/shared/ui/empty_state.dart';
+import 'package:app/shared/ui/error_state.dart';
+import 'package:app/shared/ui/skeleton.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -44,8 +47,8 @@ class RoomListPanel extends ConsumerWidget {
         ),
         Expanded(
           child: rooms.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, _) => _ErrorView(
+            loading: () => const RoomListSkeleton(),
+            error: (error, _) => ErrorState(
               message: error is SessionFailure
                   ? error.message
                   : SessionFailure.unknown.message,
@@ -126,14 +129,10 @@ class _RoomList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (rooms.isEmpty && invites.isEmpty) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(24),
-          child: Text(
-            'Você ainda não participa de nenhuma sala.',
-            textAlign: TextAlign.center,
-          ),
-        ),
+      return const EmptyState(
+        icon: Icons.forum_outlined,
+        title: 'Você ainda não participa de nenhuma sala.',
+        hint: 'Toque em nova conversa para começar.',
       );
     }
 
@@ -180,33 +179,6 @@ class _SectionLabel extends StatelessWidget {
         text,
         style: theme.textTheme.labelLarge?.copyWith(
           color: theme.colorScheme.primary,
-        ),
-      ),
-    );
-  }
-}
-
-class _ErrorView extends StatelessWidget {
-  const _ErrorView({required this.message, required this.onRetry});
-
-  final String message;
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(message, textAlign: TextAlign.center),
-            const SizedBox(height: 12),
-            TextButton(
-              onPressed: onRetry,
-              child: const Text('Tentar de novo'),
-            ),
-          ],
         ),
       ),
     );

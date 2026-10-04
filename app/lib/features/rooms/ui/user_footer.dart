@@ -1,5 +1,5 @@
-import 'package:app/features/rooms/ui/room_avatar.dart';
 import 'package:app/features/session/domain/session.dart';
+import 'package:app/shared/ui/seeded_avatar.dart';
 import 'package:flutter/material.dart';
 
 class UserFooter extends StatelessWidget {
@@ -7,6 +7,30 @@ class UserFooter extends StatelessWidget {
 
   final Session session;
   final VoidCallback onLogout;
+
+  Future<void> _confirmLogout(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Sair da conta?'),
+        content: const Text(
+          'Você precisará entrar de novo para ver suas conversas.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(minimumSize: const Size(0, 40)),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Sair'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed ?? false) onLogout();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +48,7 @@ class UserFooter extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         child: Row(
           children: [
-            RoomAvatar(roomId: session.userId, initial: initial, radius: 18),
+            SeededAvatar(seed: session.userId, initial: initial, radius: 18),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -46,10 +70,10 @@ class UserFooter extends StatelessWidget {
                 ],
               ),
             ),
-            TextButton.icon(
-              onPressed: onLogout,
-              icon: const Icon(Icons.logout, size: 18),
-              label: const Text('Sair'),
+            IconButton(
+              tooltip: 'Sair',
+              icon: const Icon(Icons.logout, size: 20),
+              onPressed: () => _confirmLogout(context),
             ),
           ],
         ),

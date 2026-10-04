@@ -10,28 +10,33 @@ const _palette = [
   Color(0xFF6EC9CB),
 ];
 
-class RoomAvatar extends StatelessWidget {
-  const RoomAvatar({
-    required this.roomId,
+class SeededAvatar extends StatelessWidget {
+  const SeededAvatar({
+    required this.seed,
     required this.initial,
     this.radius = 24,
     super.key,
   });
 
-  final String roomId;
+  final String seed;
   final String initial;
   final double radius;
 
   @override
   Widget build(BuildContext context) {
-    final seed = roomId.codeUnits.fold<int>(0, (sum, unit) => sum + unit);
+    final hash = seed.codeUnits.fold<int>(0, (sum, unit) => sum + unit);
+    final background = _palette[hash % _palette.length];
+    final foreground = background.computeLuminance() > 0.4
+        ? const Color(0xFF1B1B1F)
+        : Colors.white;
+
     return CircleAvatar(
       radius: radius,
-      backgroundColor: _palette[seed % _palette.length],
+      backgroundColor: background,
       child: Text(
         initial,
         style: TextStyle(
-          color: Colors.white,
+          color: foreground,
           fontSize: radius * 0.8,
           fontWeight: FontWeight.w600,
         ),

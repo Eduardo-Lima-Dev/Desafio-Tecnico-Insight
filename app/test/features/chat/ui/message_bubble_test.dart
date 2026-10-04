@@ -22,11 +22,18 @@ Future<void> _pump(
   WidgetTester tester,
   ChatMessage message, {
   VoidCallback? onRetry,
+  bool isFirstInGroup = true,
+  bool isLastInGroup = true,
 }) {
   return tester.pumpWidget(
     MaterialApp(
       home: Scaffold(
-        body: MessageBubble(message: message, onRetry: onRetry),
+        body: MessageBubble(
+          message: message,
+          onRetry: onRetry,
+          isFirstInGroup: isFirstInGroup,
+          isLastInGroup: isLastInGroup,
+        ),
       ),
     ),
   );
@@ -115,5 +122,34 @@ void main() {
     await tester.tap(find.byIcon(Icons.done));
 
     expect(retries, 0);
+  });
+
+  testWidgets('no meio de um grupo não repete o nome nem o avatar', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      _message(),
+      isFirstInGroup: false,
+      isLastInGroup: false,
+    );
+
+    expect(find.text('Bob'), findsNothing);
+    expect(find.byType(CircleAvatar), findsNothing);
+  });
+
+  testWidgets('a última do grupo mostra o avatar de quem recebeu', (
+    tester,
+  ) async {
+    await _pump(tester, _message());
+
+    expect(find.byType(CircleAvatar), findsOneWidget);
+    expect(find.text('B'), findsOneWidget);
+  });
+
+  testWidgets('mensagem própria não mostra avatar', (tester) async {
+    await _pump(tester, _message(isOwn: true));
+
+    expect(find.byType(CircleAvatar), findsNothing);
   });
 }

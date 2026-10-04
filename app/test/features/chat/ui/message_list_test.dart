@@ -107,6 +107,43 @@ void main() {
 
     expect(repository.calls, 0);
     expect(find.text('Nenhuma mensagem ainda.'), findsOneWidget);
+    expect(find.byIcon(Icons.forum_outlined), findsOneWidget);
+  });
+
+  testWidgets('agrupa mensagens seguidas e separa por dia', (tester) async {
+    final today = DateTime.now();
+    final messages = [
+      ChatMessage(
+        id: '1',
+        senderId: '@bob:localhost',
+        senderName: 'Bob',
+        text: 'Mensagem antiga',
+        sentAt: today.subtract(const Duration(days: 1)),
+        isOwn: false,
+      ),
+      ChatMessage(
+        id: '2',
+        senderId: '@bob:localhost',
+        senderName: 'Bob',
+        text: 'Primeira de hoje',
+        sentAt: today,
+        isOwn: false,
+      ),
+      ChatMessage(
+        id: '3',
+        senderId: '@bob:localhost',
+        senderName: 'Bob',
+        text: 'Segunda de hoje',
+        sentAt: today,
+        isOwn: false,
+      ),
+    ];
+    await _pump(tester, _FakeChatRepository(), messages);
+
+    expect(find.text('Hoje'), findsOneWidget);
+    expect(find.text('Ontem'), findsOneWidget);
+    expect(find.text('Bob'), findsNWidgets(2));
+    expect(find.byType(CircleAvatar), findsNWidgets(2));
   });
 
   testWidgets('conversa longa só carrega ao rolar até o topo', (tester) async {

@@ -3,7 +3,9 @@ import 'dart:async';
 import 'package:app/features/chat/domain/chat_message.dart';
 import 'package:app/features/chat/domain/history_state.dart';
 import 'package:app/features/chat/state/chat_providers.dart';
+import 'package:app/features/chat/ui/day_label.dart';
 import 'package:app/features/chat/ui/message_bubble.dart';
+import 'package:app/shared/ui/empty_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -56,7 +58,11 @@ class _MessageListState extends ConsumerState<MessageList> {
     final messages = widget.messages;
 
     if (messages.isEmpty) {
-      return const Center(child: Text('Nenhuma mensagem ainda.'));
+      return const EmptyState(
+        icon: Icons.forum_outlined,
+        title: 'Nenhuma mensagem ainda.',
+        hint: 'Envie a primeira mensagem para começar a conversa.',
+      );
     }
 
     if (!history.reachedStart && !history.failed && !history.loading) {
@@ -79,14 +85,65 @@ class _MessageListState extends ConsumerState<MessageList> {
             ),
           );
         }
-        final message = messages[messages.length - 1 - index];
+        final position = messages.length - 1 - index;
+        final message = messages[position];
+        final older = position > 0 ? messages[position - 1] : null;
+        final newer = position < messages.length - 1
+            ? messages[position + 1]
+            : null;
+        final startsDay =
+            older == null || !isSameDay(older.sentAt, message.sentAt);
+        final endsDay =
+            newer == null || !isSameDay(newer.sentAt, message.sentAt);
         final onRetry = widget.onRetry;
-        return MessageBubble(
+
+        return Column(
           key: ValueKey(message.id),
-          message: message,
-          onRetry: onRetry == null ? null : () => onRetry(message),
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (startsDay) _DaySeparator(day: message.sentAt),
+            MessageBubble(
+              message: message,
+              isFirstInGroup: startsDay || older.senderId != message.senderId,
+              isLastInGroup: endsDay || newer.senderId != message.senderId,
+              animateIn: index == 0,
+              onRetry: onRetry == null ? null : () => onRetry(message),
+            ),
+          ],
         );
       },
+    );
+  }
+}
+
+class _DaySeparator extends StatelessWidget {
+  const _DaySeparator({required this.day});
+
+  final DateTime day;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Center(
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            child: Text(
+              formatDayLabel(day),
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

@@ -63,37 +63,68 @@ class _MessageComposerState extends ConsumerState<MessageComposer> {
       );
     });
 
+    final theme = Theme.of(context);
+
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Expanded(
-            child: Focus(
-              onKeyEvent: _onKey,
-              child: TextField(
-                controller: _controller,
-                focusNode: _focusNode,
-                autofocus: true,
-                minLines: 1,
-                maxLines: 6,
-                keyboardType: TextInputType.multiline,
-                textInputAction: TextInputAction.newline,
-                decoration: const InputDecoration(
-                  hintText: 'Digite uma mensagem...',
-                  border: OutlineInputBorder(),
-                  isDense: true,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: Focus(
+                  onKeyEvent: _onKey,
+                  child: TextField(
+                    controller: _controller,
+                    focusNode: _focusNode,
+                    autofocus: true,
+                    minLines: 1,
+                    maxLines: 6,
+                    keyboardType: TextInputType.multiline,
+                    textInputAction: TextInputAction.newline,
+                    decoration: InputDecoration(
+                      hintText: 'Digite uma mensagem...',
+                      border: _pillBorder,
+                      enabledBorder: _pillBorder,
+                      focusedBorder: _pillBorder,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 14,
+                      ),
+                    ),
+                  ),
                 ),
               ),
-            ),
+              const SizedBox(width: 8),
+              ValueListenableBuilder<TextEditingValue>(
+                valueListenable: _controller,
+                builder: (context, value, _) {
+                  final canSend = value.text.trim().isNotEmpty;
+                  return AnimatedScale(
+                    scale: canSend ? 1 : 0.85,
+                    duration: const Duration(milliseconds: 150),
+                    curve: Curves.easeOut,
+                    child: AnimatedOpacity(
+                      opacity: canSend ? 1 : 0.5,
+                      duration: const Duration(milliseconds: 150),
+                      child: IconButton.filled(
+                        tooltip: 'Enviar',
+                        icon: const Icon(Icons.send_rounded),
+                        onPressed: canSend ? _send : null,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
           ),
-          const SizedBox(width: 8),
-          ValueListenableBuilder<TextEditingValue>(
-            valueListenable: _controller,
-            builder: (context, value, _) => IconButton.filled(
-              tooltip: 'Enviar',
-              icon: const Icon(Icons.send),
-              onPressed: value.text.trim().isEmpty ? null : _send,
+          const SizedBox(height: 4),
+          Text(
+            'Enter envia · Shift+Enter quebra linha',
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
             ),
           ),
         ],
@@ -101,3 +132,8 @@ class _MessageComposerState extends ConsumerState<MessageComposer> {
     );
   }
 }
+
+final _pillBorder = OutlineInputBorder(
+  borderRadius: BorderRadius.circular(28),
+  borderSide: BorderSide.none,
+);

@@ -4,9 +4,12 @@ import 'package:app/features/chat/state/chat_providers.dart';
 import 'package:app/features/chat/ui/message_composer.dart';
 import 'package:app/features/chat/ui/message_list.dart';
 import 'package:app/features/rooms/state/rooms_providers.dart';
-import 'package:app/features/rooms/ui/room_avatar.dart';
 import 'package:app/features/session/domain/session_failure.dart';
 import 'package:app/features/session/ui/failure_message.dart';
+import 'package:app/shared/ui/empty_state.dart';
+import 'package:app/shared/ui/error_state.dart';
+import 'package:app/shared/ui/seeded_avatar.dart';
+import 'package:app/shared/ui/skeleton.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -20,7 +23,11 @@ class ConversationPanel extends ConsumerWidget {
     final room = ref.watch(selectedRoomProvider);
 
     if (room == null) {
-      return const Center(child: Text('Selecione uma sala'));
+      return const EmptyState(
+        icon: Icons.chat_bubble_outline_rounded,
+        title: 'Selecione uma sala',
+        hint: 'Escolha uma conversa ou crie uma nova.',
+      );
     }
 
     final messages = ref.watch(chatMessagesProvider(room.id));
@@ -39,7 +46,7 @@ class ConversationPanel extends ConsumerWidget {
                 )
               else
                 const SizedBox(width: 8),
-              RoomAvatar(roomId: room.id, initial: room.initial, radius: 20),
+              SeededAvatar(seed: room.id, initial: room.initial, radius: 20),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
@@ -55,28 +62,12 @@ class ConversationPanel extends ConsumerWidget {
         const Divider(height: 1),
         Expanded(
           child: messages.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, _) => Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      error is SessionFailure
-                          ? error.message
-                          : SessionFailure.unknown.message,
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 12),
-                    TextButton(
-                      onPressed: () =>
-                          ref.invalidate(openChatProvider(room.id)),
-                      child: const Text('Tentar de novo'),
-                    ),
-                  ],
-                ),
-              ),
+            loading: () => const MessageListSkeleton(),
+            error: (error, _) => ErrorState(
+              message: error is SessionFailure
+                  ? error.message
+                  : SessionFailure.unknown.message,
+              onRetry: () => ref.invalidate(openChatProvider(room.id)),
             ),
             data: (items) => MessageList(
               roomId: room.id,

@@ -224,8 +224,12 @@ void main() {
       findsOneWidget,
     );
     expect(
-      find.descendant(of: footer, matching: find.text('Sair')),
+      find.descendant(of: footer, matching: find.byTooltip('Sair')),
       findsOneWidget,
+    );
+    expect(
+      find.descendant(of: footer, matching: find.text('Sair')),
+      findsNothing,
     );
   });
 
@@ -244,17 +248,38 @@ void main() {
     await _pump(tester, size: wide);
 
     expect(find.byType(AppBar), findsNothing);
-    expect(find.text('Sair'), findsOneWidget);
+    expect(find.byTooltip('Sair'), findsOneWidget);
   });
 
-  testWidgets('tocar em Sair desloga', (tester) async {
+  testWidgets('tocar em Sair pede confirmação antes de deslogar', (
+    tester,
+  ) async {
     final session = _FakeSessionRepository();
     await _pump(tester, size: wide, session: session);
 
-    await tester.tap(find.text('Sair'));
+    await tester.tap(find.byTooltip('Sair'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Sair da conta?'), findsOneWidget);
+    expect(session.logoutCalls, 0);
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Sair'));
     await tester.pumpAndSettle();
 
     expect(session.logoutCalls, 1);
+  });
+
+  testWidgets('cancelar a confirmação não desloga', (tester) async {
+    final session = _FakeSessionRepository();
+    await _pump(tester, size: wide, session: session);
+
+    await tester.tap(find.byTooltip('Sair'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Cancelar'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Sair da conta?'), findsNothing);
+    expect(session.logoutCalls, 0);
   });
 
   testWidgets('em janela estreita mostra a lista com o rodapé', (tester) async {

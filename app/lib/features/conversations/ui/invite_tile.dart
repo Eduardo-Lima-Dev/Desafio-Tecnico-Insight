@@ -1,5 +1,5 @@
 import 'package:app/features/conversations/domain/room_invite.dart';
-import 'package:app/features/rooms/ui/room_avatar.dart';
+import 'package:app/shared/ui/seeded_avatar.dart';
 import 'package:flutter/material.dart';
 
 class InviteTile extends StatelessWidget {
@@ -22,7 +22,7 @@ class InviteTile extends StatelessWidget {
         : String.fromCharCode(invite.name.trim().runes.first).toUpperCase();
 
     return ListTile(
-      leading: RoomAvatar(roomId: invite.roomId, initial: initial),
+      leading: SeededAvatar(seed: invite.roomId, initial: initial),
       title: Text(
         invite.name,
         maxLines: 1,
