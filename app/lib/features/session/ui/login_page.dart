@@ -18,6 +18,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   final _username = TextEditingController();
   final _password = TextEditingController();
   var _saveServer = false;
+  var _obscurePassword = true;
 
   @override
   void initState() {
@@ -48,6 +49,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
     final password = _password.text;
     _password.clear();
+    setState(() => _obscurePassword = true);
 
     await ref
         .read(loginControllerProvider.notifier)
@@ -111,10 +113,23 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   TextFormField(
                     controller: _password,
                     enabled: !isLoading,
-                    obscureText: true,
-                    decoration: const InputDecoration(
+                    obscureText: _obscurePassword,
+                    decoration: InputDecoration(
                       labelText: 'Senha',
-                      border: OutlineInputBorder(),
+                      border: const OutlineInputBorder(),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscurePassword
+                              ? Icons.visibility_outlined
+                              : Icons.visibility_off_outlined,
+                        ),
+                        tooltip: _obscurePassword
+                            ? 'Mostrar senha'
+                            : 'Ocultar senha',
+                        onPressed: () => setState(
+                          () => _obscurePassword = !_obscurePassword,
+                        ),
+                      ),
                     ),
                     validator: _required,
                     textInputAction: TextInputAction.next,
