@@ -228,6 +228,28 @@ Os testes Rust de integração são opcionais, exigem o homeserver local ligado 
 cargo test -- --ignored --test-threads=1
 ```
 
+## Executáveis prontos (Releases)
+
+Dois workflows do GitHub Actions cuidam da compilação, já que o Flutter desktop não compila de um sistema para outro:
+
+- **CI** (`.github/workflows/ci.yml`): a cada push na `main` e em pull requests, roda formatação, `flutter analyze`, `flutter test`, `cargo test` e compila o app em Linux, Windows e macOS.
+- **Release** (`.github/workflows/release.yml`): ao enviar uma tag `v*`, gera os três executáveis e os publica na aba **Releases**.
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+Também dá para rodar o workflow Release manualmente na aba **Actions**. Nesse caso os arquivos ficam como artefatos da execução, sem criar uma Release.
+
+| Sistema | Arquivo | Como abrir |
+| ------- | ------- | ---------- |
+| Windows | `insight-matrix-<versão>-windows-x64.zip` | Extraia e execute `app.exe`. Sem assinatura, o SmartScreen avisa: clique em "Mais informações" e "Executar assim mesmo". |
+| macOS (Apple Silicon) | `insight-matrix-<versão>-macos-arm64.dmg` | Arraste para Aplicativos. Sem assinatura da Apple, o Gatekeeper bloqueia: clique com o botão direito, "Abrir", ou rode `xattr -dr com.apple.quarantine "/Applications/Insight Matrix.app"`. |
+| Linux (x86_64) | `insight-matrix-<versão>-linux-x86_64.AppImage` | `chmod +x` no arquivo e execute. É preciso ter `libsecret` e GTK 3 instalados no sistema. |
+
+Os executáveis não são assinados. O build do macOS é só para Apple Silicon.
+
 ## Plataformas
 
 | Sistema | Situação |

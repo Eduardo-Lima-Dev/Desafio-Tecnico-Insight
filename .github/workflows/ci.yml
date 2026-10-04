@@ -1,0 +1,83 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLUTTER_VERSION: 3.47.6
+  LINUX_PACKAGES: >-
+    clang cmake ninja-build pkg-config libgtk-3-dev libsecret-1-dev
+    libjsoncpp-dev liblzma-dev
+
+jobs:
+  flutter:
+    name: Analisar e testar
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+      - run: flutter pub get
+      - name: Formatação
+        run: dart format --output=none --set-exit-if-changed lib test
+      - name: Análise estática
+        run: flutter analyze
+      - name: Testes
+        run: flutter test
+
+  rust:
+    name: Testes do Rust
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: cargo test --manifest-path app/rust/Cargo.toml
+
+  build:
+    name: Compilar (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux
+            os: ubuntu-22.04
+            target: linux
+          - name: Windows
+            os: windows-latest
+            target: windows
+          - name: macOS
+            os: macos-latest
+            target: macos
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+      - name: Dependências do Linux
+        if: matrix.target == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ${{ env.LINUX_PACKAGES }}
+      - run: flutter pub get
+      - run: flutter build ${{ matrix.target }} --release

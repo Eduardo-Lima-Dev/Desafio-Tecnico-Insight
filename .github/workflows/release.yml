@@ -1,0 +1,147 @@
+name: Release
+
+# Gera os executáveis de Linux, Windows e macOS.
+# - Ao enviar uma tag `v*` (ex.: v1.0.0), publica uma Release com os três arquivos.
+# - Em execução manual, só gera os arquivos como artefatos do workflow.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  FLUTTER_VERSION: 3.47.6
+  VERSION: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'dev' }}
+
+jobs:
+  linux:
+    name: Linux (AppImage)
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+      - name: Dependências
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config \
+            libgtk-3-dev libsecret-1-dev libjsoncpp-dev liblzma-dev
+      - run: flutter pub get
+      - run: flutter build linux --release
+      - name: Montar o AppImage
+        run: |
+          mkdir -p AppDir/usr/bin dist
+          cp -r build/linux/x64/release/bundle/. AppDir/usr/bin/
+          cp assets/icon/app_icon.png AppDir/insight-matrix.png
+          cat > AppDir/insight-matrix.desktop <<'DESKTOP'
+          [Desktop Entry]
+          Type=Application
+          Name=Insight Matrix
+          Comment=Cliente de mensageria Matrix
+          Exec=app
+          Icon=insight-matrix
+          Categories=Network;InstantMessaging;
+          DESKTOP
+          cat > AppDir/AppRun <<'APPRUN'
+          #!/bin/sh
+          HERE="$(dirname "$(readlink -f "$0")")"
+          exec "$HERE/usr/bin/app" "$@"
+          APPRUN
+          chmod +x AppDir/AppRun
+          curl -fsSL -o appimagetool \
+            https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x appimagetool
+          ARCH=x86_64 ./appimagetool --appimage-extract-and-run AppDir \
+            "dist/insight-matrix-${VERSION}-linux-x86_64.AppImage"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: app/dist/*.AppImage
+          if-no-files-found: error
+
+  windows:
+    name: Windows (zip)
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+      - run: flutter pub get
+      - run: flutter build windows --release
+      - name: Empacotar
+        shell: pwsh
+        run: |
+          $release = 'build\windows\x64\runner\Release'
+          foreach ($dll in 'msvcp140.dll', 'vcruntime140.dll', 'vcruntime140_1.dll') {
+            Copy-Item "C:\Windows\System32\$dll" $release
+          }
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Compress-Archive -Path "$release\*" -DestinationPath "dist\insight-matrix-$env:VERSION-windows-x64.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: app/dist/*.zip
+          if-no-files-found: error
+
+  macos:
+    name: macOS (dmg)
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+      - run: flutter pub get
+      - run: flutter build macos --release
+      - name: Criar o dmg
+        run: |
+          mkdir -p dist/dmg
+          cp -R build/macos/Build/Products/Release/app.app "dist/dmg/Insight Matrix.app"
+          ln -s /Applications dist/dmg/Applications
+          hdiutil create -volname "Insight Matrix" -srcfolder dist/dmg -ov \
+            -format UDZO "dist/insight-matrix-${VERSION}-macos-arm64.dmg"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: app/dist/*.dmg
+          if-no-files-found: error
+
+  release:
+    name: Publicar a Release
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [linux, windows, macos]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Criar a Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$VERSION" dist/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "Insight Matrix $VERSION" \
+            --generate-notes
