@@ -1,17 +1,21 @@
-# app
+# Aplicativo Flutter
 
-A new Flutter project.
+Projeto Flutter do cliente de mensageria desktop com Matrix. A visão geral, a configuração do ambiente e a execução estão no [README da raiz do repositório](../README.md).
 
-## Getting Started
+Estrutura:
 
-This project is a starting point for a Flutter application.
+- `lib/` – código Dart, organizado por funcionalidade em `features/` (sessão, salas, conversa e conversas) e a ponte gerada em `src/rust/` (não editar à mão).
+- `rust/` – biblioteca Rust com o Matrix Rust SDK, exposta ao Dart pelo Flutter Rust Bridge (`rust/src/api/`).
+- `rust_builder/` – cola gerada pelo Flutter Rust Bridge para compilar o Rust junto com o app (não editar).
+- `test/` – testes Dart, espelhando a estrutura de `lib/`.
 
-A few resources to get you started if this is your first Flutter project:
+Comandos úteis, a partir desta pasta:
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+```bash
+flutter pub get
+flutter run -d linux            # ou: macos, windows
+flutter analyze
+flutter test
+dart run build_runner build     # depois de mudar providers
+flutter_rust_bridge_codegen generate   # depois de mudar a API do Rust
+```
