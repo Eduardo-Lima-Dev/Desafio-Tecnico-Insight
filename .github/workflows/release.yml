@@ -34,6 +34,17 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y clang cmake ninja-build pkg-config \
             libgtk-3-dev libsecret-1-dev libjsoncpp-dev liblzma-dev
+      - name: Cache do Rust
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            app/build/**/cargokit_build
+          key: rust-${{ runner.os }}-release-${{ hashFiles('app/rust/Cargo.lock') }}
+          restore-keys: |
+            rust-${{ runner.os }}-release-
       - run: flutter pub get
       - run: flutter build linux --release
       - name: Montar o AppImage
@@ -80,6 +91,17 @@ jobs:
           channel: stable
           flutter-version: ${{ env.FLUTTER_VERSION }}
           cache: true
+      - name: Cache do Rust
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            app/build/**/cargokit_build
+          key: rust-${{ runner.os }}-release-${{ hashFiles('app/rust/Cargo.lock') }}
+          restore-keys: |
+            rust-${{ runner.os }}-release-
       - run: flutter pub get
       - run: flutter build windows --release
       - name: Empacotar
@@ -110,6 +132,17 @@ jobs:
           channel: stable
           flutter-version: ${{ env.FLUTTER_VERSION }}
           cache: true
+      - name: Cache do Rust
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            app/build/macos/Build/Intermediates.noindex/Pods.build/Release/rust_lib_app.build
+          key: rust-${{ runner.os }}-release-${{ hashFiles('app/rust/Cargo.lock') }}
+          restore-keys: |
+            rust-${{ runner.os }}-release-
       - run: flutter pub get
       - run: flutter build macos --release
       - name: Criar o dmg

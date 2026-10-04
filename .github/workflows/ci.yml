@@ -54,6 +54,8 @@ jobs:
 
   build:
     name: Compilar (${{ matrix.name }})
+    # Só gasta os minutos caros de Windows e macOS se a análise e os testes passarem.
+    needs: [flutter, rust]
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -62,12 +64,15 @@ jobs:
           - name: Linux
             os: ubuntu-22.04
             target: linux
+            rust_cache: app/build/**/cargokit_build
           - name: Windows
             os: windows-latest
             target: windows
+            rust_cache: app/build/**/cargokit_build
           - name: macOS
             os: macos-latest
             target: macos
+            rust_cache: app/build/macos/Build/Intermediates.noindex/Pods.build/Release/rust_lib_app.build
     defaults:
       run:
         working-directory: app
@@ -83,5 +88,16 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y ${{ env.LINUX_PACKAGES }}
+      - name: Cache do Rust
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            ${{ matrix.rust_cache }}
+          key: rust-${{ runner.os }}-release-${{ hashFiles('app/rust/Cargo.lock') }}
+          restore-keys: |
+            rust-${{ runner.os }}-release-
       - run: flutter pub get
       - run: flutter build ${{ matrix.target }} --release
