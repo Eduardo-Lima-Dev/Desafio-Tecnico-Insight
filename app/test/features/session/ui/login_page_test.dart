@@ -54,6 +54,27 @@ Future<void> _pump(
   await tester.pumpAndSettle();
 }
 
+Finder _passwordField() => find.widgetWithText(TextFormField, 'Senha');
+
+bool _passwordObscured(WidgetTester tester) => tester
+    .widget<EditableText>(
+      find.descendant(
+        of: _passwordField(),
+        matching: find.byType(EditableText),
+      ),
+    )
+    .obscureText;
+
+String _passwordText(WidgetTester tester) => tester
+    .widget<EditableText>(
+      find.descendant(
+        of: _passwordField(),
+        matching: find.byType(EditableText),
+      ),
+    )
+    .controller
+    .text;
+
 String _serverText(WidgetTester tester) => tester
     .widget<TextFormField>(find.widgetWithText(TextFormField, 'Servidor'))
     .controller!
@@ -108,5 +129,70 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(saved.value, 'http://localhost:8008');
+  });
+
+  testWidgets('a senha começa oculta', (tester) async {
+    await _pump(tester, _FakeSavedServerRepository());
+
+    expect(_passwordObscured(tester), isTrue);
+    expect(find.byTooltip('Mostrar senha'), findsOneWidget);
+    expect(find.byIcon(Icons.visibility_outlined), findsOneWidget);
+  });
+
+  testWidgets('o olho mostra e oculta a senha', (tester) async {
+    await _pump(tester, _FakeSavedServerRepository());
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Senha'),
+      'senha123',
+    );
+
+    await tester.tap(find.byTooltip('Mostrar senha'));
+    await tester.pump();
+
+    expect(_passwordObscured(tester), isFalse);
+    expect(find.byTooltip('Ocultar senha'), findsOneWidget);
+    expect(find.byIcon(Icons.visibility_off_outlined), findsOneWidget);
+    expect(_passwordText(tester), 'senha123');
+
+    await tester.tap(find.byTooltip('Ocultar senha'));
+    await tester.pump();
+
+    expect(_passwordObscured(tester), isTrue);
+    expect(find.byTooltip('Mostrar senha'), findsOneWidget);
+    expect(_passwordText(tester), 'senha123');
+  });
+
+  testWidgets('os outros campos não ganham o olho', (tester) async {
+    await _pump(tester, _FakeSavedServerRepository());
+
+    expect(find.byTooltip('Mostrar senha'), findsOneWidget);
+    expect(find.byType(IconButton), findsOneWidget);
+  });
+
+  testWidgets('depois de entrar a senha volta a ficar oculta e vazia', (
+    tester,
+  ) async {
+    await _pump(tester, _FakeSavedServerRepository());
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Usuário'),
+      'alice',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Servidor'),
+      'localhost:8008',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Senha'),
+      'senha123',
+    );
+    await tester.tap(find.byTooltip('Mostrar senha'));
+    await tester.pump();
+    expect(_passwordObscured(tester), isFalse);
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Entrar'));
+    await tester.pumpAndSettle();
+
+    expect(_passwordObscured(tester), isTrue);
+    expect(_passwordText(tester), isEmpty);
   });
 }

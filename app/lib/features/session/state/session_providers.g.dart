@@ -80,7 +80,7 @@ final class SessionControllerProvider
   SessionController create() => SessionController();
 }
 
-String _$sessionControllerHash() => r'05a0498a87497ab59c3616867fb2bac19161c99d';
+String _$sessionControllerHash() => r'bfd3a3d039a7710f97e81989081277b1b2255393';
 
 abstract class _$SessionController extends $AsyncNotifier<AuthState> {
   FutureOr<AuthState> build();
@@ -93,6 +93,58 @@ abstract class _$SessionController extends $AsyncNotifier<AuthState> {
             as $ClassProviderElement<
               AnyNotifier<AsyncValue<AuthState>, AuthState>,
               AsyncValue<AuthState>,
+              Object?,
+              Object?
+            >;
+    return element.handleCreate(ref, build);
+  }
+}
+
+@ProviderFor(SessionNotice)
+final sessionNoticeProvider = SessionNoticeProvider._();
+
+final class SessionNoticeProvider
+    extends $NotifierProvider<SessionNotice, SessionFailure?> {
+  SessionNoticeProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'sessionNoticeProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$sessionNoticeHash();
+
+  @$internal
+  @override
+  SessionNotice create() => SessionNotice();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(SessionFailure? value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<SessionFailure?>(value),
+    );
+  }
+}
+
+String _$sessionNoticeHash() => r'55183fb11f19bc94dbad50cf278f7cdfbb8bcf1d';
+
+abstract class _$SessionNotice extends $Notifier<SessionFailure?> {
+  SessionFailure? build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<SessionFailure?, SessionFailure?>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<SessionFailure?, SessionFailure?>,
+              SessionFailure?,
               Object?,
               Object?
             >;
@@ -124,7 +176,7 @@ final class LoginControllerProvider
   LoginController create() => LoginController();
 }
 
-String _$loginControllerHash() => r'c87522598b6c9a91000a0181bec4deb2e7172226';
+String _$loginControllerHash() => r'ce130a799f105ac3740773a91025de80a1421c2e';
 
 abstract class _$LoginController extends $AsyncNotifier<void> {
   FutureOr<void> build();

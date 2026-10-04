@@ -1,6 +1,7 @@
 # Homeserver local: segredos, chave de assinatura e banco gerados pelo Synapse
 docker/synapse/*
 !docker/synapse/dev-overrides.yaml
+!docker/synapse/seed_rooms.py
 
 # Editores e sistema
 .idea/

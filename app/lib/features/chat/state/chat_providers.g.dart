@@ -1,0 +1,338 @@
+// GENERATED CODE - DO NOT MODIFY BY HAND
+
+part of 'chat_providers.dart';
+
+// **************************************************************************
+// RiverpodGenerator
+// **************************************************************************
+
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
+
+@ProviderFor(chatRepository)
+final chatRepositoryProvider = ChatRepositoryProvider._();
+
+final class ChatRepositoryProvider
+    extends $FunctionalProvider<ChatRepository, ChatRepository, ChatRepository>
+    with $Provider<ChatRepository> {
+  ChatRepositoryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'chatRepositoryProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$chatRepositoryHash();
+
+  @$internal
+  @override
+  $ProviderElement<ChatRepository> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  ChatRepository create(Ref ref) {
+    return chatRepository(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(ChatRepository value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<ChatRepository>(value),
+    );
+  }
+}
+
+String _$chatRepositoryHash() => r'00c9ee31719685d039fed31457e0d15f2a859315';
+
+@ProviderFor(openChat)
+final openChatProvider = OpenChatFamily._();
+
+final class OpenChatProvider
+    extends $FunctionalProvider<AsyncValue<void>, void, FutureOr<void>>
+    with $FutureModifier<void>, $FutureProvider<void> {
+  OpenChatProvider._({
+    required OpenChatFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: _noRetry,
+         name: r'openChatProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$openChatHash();
+
+  @override
+  String toString() {
+    return r'openChatProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $FutureProviderElement<void> $createElement($ProviderPointer pointer) =>
+      $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<void> create(Ref ref) {
+    final argument = this.argument as String;
+    return openChat(ref, argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is OpenChatProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$openChatHash() => r'46db134c34c7fdf9227f20a2eabb9f34fff113ab';
+
+final class OpenChatFamily extends $Family
+    with $FunctionalFamilyOverride<FutureOr<void>, String> {
+  OpenChatFamily._()
+    : super(
+        retry: _noRetry,
+        name: r'openChatProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  OpenChatProvider call(String roomId) =>
+      OpenChatProvider._(argument: roomId, from: this);
+
+  @override
+  String toString() => r'openChatProvider';
+}
+
+@ProviderFor(chatMessages)
+final chatMessagesProvider = ChatMessagesFamily._();
+
+final class ChatMessagesProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<ChatMessage>>,
+          List<ChatMessage>,
+          Stream<List<ChatMessage>>
+        >
+    with
+        $FutureModifier<List<ChatMessage>>,
+        $StreamProvider<List<ChatMessage>> {
+  ChatMessagesProvider._({
+    required ChatMessagesFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: _noRetry,
+         name: r'chatMessagesProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$chatMessagesHash();
+
+  @override
+  String toString() {
+    return r'chatMessagesProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $StreamProviderElement<List<ChatMessage>> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
+
+  @override
+  Stream<List<ChatMessage>> create(Ref ref) {
+    final argument = this.argument as String;
+    return chatMessages(ref, argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is ChatMessagesProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$chatMessagesHash() => r'26b98a66eda615aca1a02dcb32e4928322d57336';
+
+final class ChatMessagesFamily extends $Family
+    with $FunctionalFamilyOverride<Stream<List<ChatMessage>>, String> {
+  ChatMessagesFamily._()
+    : super(
+        retry: _noRetry,
+        name: r'chatMessagesProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  ChatMessagesProvider call(String roomId) =>
+      ChatMessagesProvider._(argument: roomId, from: this);
+
+  @override
+  String toString() => r'chatMessagesProvider';
+}
+
+@ProviderFor(MessageSender)
+final messageSenderProvider = MessageSenderProvider._();
+
+final class MessageSenderProvider
+    extends $AsyncNotifierProvider<MessageSender, void> {
+  MessageSenderProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'messageSenderProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$messageSenderHash();
+
+  @$internal
+  @override
+  MessageSender create() => MessageSender();
+}
+
+String _$messageSenderHash() => r'54e74414fddb3e388928b743ada38c253124c6c6';
+
+abstract class _$MessageSender extends $AsyncNotifier<void> {
+  FutureOr<void> build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<AsyncValue<void>, void>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<AsyncValue<void>, void>,
+              AsyncValue<void>,
+              Object?,
+              Object?
+            >;
+    return element.handleCreate(ref, build);
+  }
+}
+
+@ProviderFor(HistoryLoader)
+final historyLoaderProvider = HistoryLoaderFamily._();
+
+final class HistoryLoaderProvider
+    extends $NotifierProvider<HistoryLoader, HistoryState> {
+  HistoryLoaderProvider._({
+    required HistoryLoaderFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'historyLoaderProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$historyLoaderHash();
+
+  @override
+  String toString() {
+    return r'historyLoaderProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  HistoryLoader create() => HistoryLoader();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(HistoryState value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<HistoryState>(value),
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is HistoryLoaderProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$historyLoaderHash() => r'0bc77018fb8203e0a8294fc68bec5a54b919ddb0';
+
+final class HistoryLoaderFamily extends $Family
+    with
+        $ClassFamilyOverride<
+          HistoryLoader,
+          HistoryState,
+          HistoryState,
+          HistoryState,
+          String
+        > {
+  HistoryLoaderFamily._()
+    : super(
+        retry: null,
+        name: r'historyLoaderProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  HistoryLoaderProvider call(String roomId) =>
+      HistoryLoaderProvider._(argument: roomId, from: this);
+
+  @override
+  String toString() => r'historyLoaderProvider';
+}
+
+abstract class _$HistoryLoader extends $Notifier<HistoryState> {
+  late final _$args = ref.$arg as String;
+  String get roomId => _$args;
+
+  HistoryState build(String roomId);
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<HistoryState, HistoryState>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<HistoryState, HistoryState>,
+              HistoryState,
+              Object?,
+              Object?
+            >;
+    return element.handleCreate(ref, () => build(_$args));
+  }
+}

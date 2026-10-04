@@ -13,7 +13,7 @@ Projeto em desenvolvimento. O que existe hoje:
 - [ ] Integração com o Matrix Rust SDK (login, sessão, salas, mensagens)
 - [ ] Interface
 
-O detalhamento de escopo, requisitos e fluxos está em [docs/PRD.md](docs/PRD.md). O enunciado do desafio está em [docs/desafio-tecnico.md](docs/desafio-tecnico.md).
+O escopo e os requisitos estão em [docs/PRD.md](docs/PRD.md), e os diagramas de fluxo em [docs/FLUXOS.md](docs/FLUXOS.md). O enunciado do desafio está em [docs/desafio-tecnico.md](docs/desafio-tecnico.md).
 
 ## Como as peças se encaixam
 
@@ -33,7 +33,7 @@ Não existe back-end próprio. O homeserver Matrix cumpre esse papel, e o códig
 │   └── rust_builder/    Cargokit: compila o Rust junto com o app em cada sistema
 ├── docker/synapse/      Configuração extra do homeserver local (dev-overrides.yaml)
 ├── docker-compose.yml   Homeserver Matrix (Synapse) para desenvolvimento
-└── docs/                PRD e enunciado do desafio
+└── docs/                PRD, fluxos (diagramas) e enunciado do desafio
 ```
 
 ## Pré-requisitos
@@ -89,7 +89,7 @@ Na primeira vez, o Compose faz tudo em sequência:
 
 1. gera a configuração do Synapse (`synapse-init`), já com os limites de requisição relaxados para desenvolvimento (`docker/synapse/dev-overrides.yaml`);
 2. sobe o servidor (`synapse`);
-3. cria os usuários de teste (`synapse-seed`).
+3. cria os usuários e as conversas de teste (`synapse-seed`, com o script `docker/synapse/seed_rooms.py`).
 
 Leva cerca de 30 segundos. Para conferir:
 
@@ -105,10 +105,33 @@ No app, use:
 | Campo    | Valor                   |
 | -------- | ----------------------- |
 | Servidor | `http://localhost:8008` |
-| Usuário  | `alice` ou `bob`        |
-| Senha    | `senha123`              |
+| Usuário  | `alice`, `bob`, `carol` ou `dave` |
+| Senha    | `senha123` (a mesma para todos)   |
 
-Os usuários ficam `@alice:localhost` e `@bob:localhost`. As credenciais são só para teste local.
+Os usuários ficam `@alice:localhost`, `@bob:localhost`, `@carol:localhost` e `@dave:localhost`. As credenciais são só para teste local.
+
+### Conversas de teste
+
+O seed também cria salas com mensagens trocadas entre os usuários, para o app já abrir com conversas, inclusive com mensagens não lidas:
+
+| Sala | Assunto | Participantes | Mensagens |
+| ---- | ------- | ------------- | --------- |
+| Alice e Bob | conversa do dia a dia (futebol) | alice, bob | 6 |
+| Equipe Insight | equipe de back-end (NestJS, JWT, Prisma) | alice, bob, carol, dave | 7 |
+| API de Pedidos | projeto de back-end em NestJS | carol, alice, bob | 4 |
+| Bob e Carol | vôlei | bob, carol | 3 |
+| Almoço de sexta | combinados do almoço | dave, alice, carol | 4 |
+| Futebol de quinta | racha semanal | dave, alice, bob, carol | 6 |
+| Vôlei da turma | treinos de vôlei | carol, alice, bob, dave | 5 |
+| Dúvidas de NestJS | validação com DTOs e pipes | bob, alice, carol, dave | 5 |
+| Churrasco do fim de semana | organização do churrasco | alice, bob, carol, dave | 6 |
+| Filmes e séries | indicações e maratona | carol, alice, dave | 4 |
+| Pipeline e deploy | CI/CD, Docker e Postgres | dave, alice, bob | 4 |
+| Histórico longo | mensagens numeradas, para testar a paginação | alice, bob | 80 |
+
+Entrando como `alice`, aparecem 11 salas; como `bob`, 10; como `carol`, 9; e como `dave`, 8. O seed é idempotente: rodar `docker compose up -d` de novo não duplica nada, e salas que já existem são mantidas. Para recriar tudo do zero, use `docker compose down -v` e suba de novo.
+
+Se você já tinha o Docker rodando de uma versão anterior do repositório, basta `docker compose down` e `docker compose up -d`: a configuração é atualizada e as salas novas são criadas por cima do que já existe. Salas que já existem **não** têm o texto atualizado; para ver as conversas novas desde o início, use `docker compose down -v` e suba de novo (isso apaga os dados do servidor de teste e as sessões salvas no app).
 
 Comandos do dia a dia:
 

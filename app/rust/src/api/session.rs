@@ -1,14 +1,12 @@
 use std::fmt;
 use std::path::PathBuf;
-use std::sync::LazyLock;
 
 use matrix_sdk::authentication::matrix::MatrixSession;
 use matrix_sdk::ruma::api::error::ErrorKind;
 use matrix_sdk::store::RoomLoadSettings;
 use matrix_sdk::{Client, ClientBuildError, SessionMeta, SessionTokens};
-use tokio::sync::RwLock;
 
-static CLIENT: LazyLock<RwLock<Option<Client>>> = LazyLock::new(|| RwLock::new(None));
+use crate::{client_holder, sync_holder, timeline_holder};
 
 #[derive(Debug, thiserror::Error)]
 pub enum AuthError {
@@ -111,7 +109,7 @@ pub async fn login(
         .map_err(|e| map_error_kind(e.client_api_error_kind()))?;
     let session = client.matrix_auth().session().ok_or(AuthError::Unknown)?;
     let data = to_session_data(&client, session);
-    *CLIENT.write().await = Some(client);
+    client_holder::set(client).await;
     Ok(data)
 }
 
@@ -143,12 +141,14 @@ pub async fn restore_session(
             None => AuthError::Network,
             Some(_) => AuthError::Unknown,
         })?;
-    *CLIENT.write().await = Some(client);
+    client_holder::set(client).await;
     Ok(())
 }
 
 pub async fn logout() -> Result<(), AuthError> {
-    let client = CLIENT.write().await.take().ok_or(AuthError::NotLoggedIn)?;
+    timeline_holder::close(None).await;
+    sync_holder::stop().await;
+    let client = client_holder::take().await.ok_or(AuthError::NotLoggedIn)?;
     client
         .matrix_auth()
         .logout()

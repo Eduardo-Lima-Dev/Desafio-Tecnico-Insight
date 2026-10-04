@@ -34,6 +34,28 @@ class SessionController extends _$SessionController {
     await ref.read(sessionRepositoryProvider).logout();
     state = const AsyncData(Unauthenticated());
   }
+
+  Future<void> expire() async {
+    await ref.read(sessionRepositoryProvider).logout();
+    ref
+        .read(sessionNoticeProvider.notifier)
+        .show(SessionFailure.sessionExpired);
+    state = const AsyncData(Unauthenticated());
+  }
+}
+
+@Riverpod(keepAlive: true)
+class SessionNotice extends _$SessionNotice {
+  @override
+  SessionFailure? build() => null;
+
+  void show(SessionFailure notice) {
+    if (state != notice) state = notice;
+  }
+
+  void clear() {
+    state = null;
+  }
 }
 
 @riverpod
@@ -47,6 +69,7 @@ class LoginController extends _$LoginController {
     required String password,
     required bool saveServer,
   }) async {
+    ref.read(sessionNoticeProvider.notifier).clear();
     state = const AsyncLoading();
 
     final Session session;
