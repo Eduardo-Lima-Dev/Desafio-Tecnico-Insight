@@ -40,6 +40,7 @@ class MatrixRoomsRepository implements RoomsRepository {
           ? null
           : DateTime.fromMillisecondsSinceEpoch(at.toInt()),
       unreadCount: room.unreadCount.toInt(),
+      memberCount: room.memberCount.toInt(),
     );
   }
 

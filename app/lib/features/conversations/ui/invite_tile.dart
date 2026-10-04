@@ -17,38 +17,83 @@ class InviteTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final initial = invite.name.trim().isEmpty
         ? '?'
         : String.fromCharCode(invite.name.trim().runes.first).toUpperCase();
 
-    return ListTile(
-      leading: SeededAvatar(seed: invite.roomId, initial: initial),
-      title: Text(
-        invite.name,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: const TextStyle(fontWeight: FontWeight.w700),
-      ),
-      subtitle: Text(
-        'Convite de ${invite.inviterName}',
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          IconButton(
-            icon: const Icon(Icons.check_circle_outline),
-            color: theme.colorScheme.primary,
-            tooltip: 'Aceitar',
-            onPressed: onAccept,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: scheme.secondaryContainer.withValues(alpha: 0.55),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: scheme.secondary.withValues(alpha: 0.35)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  SeededAvatar(seed: invite.roomId, initial: initial),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          invite.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodyLarge?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        Text(
+                          'Convite de ${invite.inviterName}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: scheme.onSecondaryContainer,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size(0, 40),
+                      ),
+                      onPressed: onAccept,
+                      child: const Text('Aceitar'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size(0, 40),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      onPressed: onDecline,
+                      child: const Text('Recusar'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-          IconButton(
-            icon: const Icon(Icons.cancel_outlined),
-            tooltip: 'Recusar',
-            onPressed: onDecline,
-          ),
-        ],
+        ),
       ),
     );
   }

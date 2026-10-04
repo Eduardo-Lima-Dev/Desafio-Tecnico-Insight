@@ -8,6 +8,7 @@ class RoomSummary {
     this.lastMessage,
     this.lastMessageAt,
     this.unreadCount = 0,
+    this.memberCount = 0,
   });
 
   final String id;
@@ -15,6 +16,7 @@ class RoomSummary {
   final String? lastMessage;
   final DateTime? lastMessageAt;
   final int unreadCount;
+  final int memberCount;
 
   String get initial {
     final trimmed = name.trim();
@@ -29,9 +31,16 @@ class RoomSummary {
       other.name == name &&
       other.lastMessage == lastMessage &&
       other.lastMessageAt == lastMessageAt &&
-      other.unreadCount == unreadCount;
+      other.unreadCount == unreadCount &&
+      other.memberCount == memberCount;
 
   @override
-  int get hashCode =>
-      Object.hash(id, name, lastMessage, lastMessageAt, unreadCount);
+  int get hashCode => Object.hash(
+    id,
+    name,
+    lastMessage,
+    lastMessageAt,
+    unreadCount,
+    memberCount,
+  );
 }

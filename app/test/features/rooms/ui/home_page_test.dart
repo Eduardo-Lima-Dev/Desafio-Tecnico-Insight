@@ -19,6 +19,7 @@ import 'package:app/features/session/domain/session.dart';
 import 'package:app/features/session/domain/session_failure.dart';
 import 'package:app/features/session/state/session_providers.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -176,6 +177,9 @@ Future<void> _pump(
   );
   await tester.pumpAndSettle();
 }
+
+Finder _dialogField() =>
+    find.descendant(of: find.byType(Dialog), matching: find.byType(TextField));
 
 void main() {
   const wide = Size(1200, 800);
@@ -397,7 +401,9 @@ void main() {
     expect(find.text('Oi, Bob! Tudo bem?'), findsOneWidget);
     expect(find.text('Bob'), findsOneWidget);
     expect(find.text('Alice'), findsNothing);
-    expect(find.text('02/01'), findsNWidgets(3));
+    expect(find.text('02/01'), findsOneWidget);
+    expect(find.text('09:05'), findsOneWidget);
+    expect(find.text('09:06'), findsOneWidget);
     expect(find.text('Nenhuma mensagem ainda.'), findsNothing);
   });
 
@@ -549,7 +555,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Nova conversa'), findsOneWidget);
 
-    await tester.enterText(find.byType(TextField), 'bob');
+    await tester.enterText(_dialogField(), 'bob');
     await tester.tap(find.text('Criar'));
     await tester.pumpAndSettle();
 
@@ -567,7 +573,7 @@ void main() {
 
     await tester.tap(find.byTooltip('Nova conversa'));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField), 'bo b');
+    await tester.enterText(_dialogField(), 'bo b');
     await tester.tap(find.text('Criar'));
     await tester.pumpAndSettle();
 
@@ -589,7 +595,7 @@ void main() {
 
     await tester.tap(find.byTooltip('Nova conversa'));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField), '@fantasma:localhost');
+    await tester.enterText(_dialogField(), '@fantasma:localhost');
     await tester.tap(find.text('Criar'));
     await tester.pumpAndSettle();
 
@@ -657,9 +663,9 @@ void main() {
     final conversations = _FakeConversationsRepository(invites: invites);
     await _pump(tester, size: wide, conversations: conversations);
 
-    await tester.tap(find.byTooltip('Aceitar').first);
+    await tester.tap(find.text('Aceitar').first);
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Recusar').last);
+    await tester.tap(find.text('Recusar').last);
     await tester.pumpAndSettle();
 
     expect(conversations.accepted, ['!i1']);
@@ -770,5 +776,195 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Não foi possível sincronizar.'), findsOneWidget);
+  });
+  group('busca', () {
+    final searchable = [
+      const RoomSummary(id: '!a', name: 'Coordenação'),
+      const RoomSummary(id: '!b', name: 'Equipe Insight'),
+    ];
+
+    testWidgets('filtra as salas ignorando acento e caixa', (tester) async {
+      await _pump(
+        tester,
+        size: wide,
+        rooms: _FakeRoomsRepository(rooms: searchable),
+      );
+
+      await tester.enterText(find.byType(TextField), 'COORDENACAO');
+      await tester.pumpAndSettle();
+
+      expect(find.text('Coordenação'), findsOneWidget);
+      expect(find.text('Equipe Insight'), findsNothing);
+    });
+
+    testWidgets('sem resultado mostra o aviso e limpar restaura a lista', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        size: wide,
+        rooms: _FakeRoomsRepository(rooms: searchable),
+      );
+
+      await tester.enterText(find.byType(TextField), 'fantasma');
+      await tester.pumpAndSettle();
+      expect(find.text('Nenhuma conversa encontrada.'), findsOneWidget);
+
+      await tester.tap(find.byTooltip('Limpar busca'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Nenhuma conversa encontrada.'), findsNothing);
+      expect(find.text('Equipe Insight'), findsOneWidget);
+    });
+
+    testWidgets('Ctrl+K foca a busca', (tester) async {
+      await _pump(tester, size: wide);
+      bool focused() =>
+          tester.widget<TextField>(find.byType(TextField)).focusNode!.hasFocus;
+
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyK);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+      await tester.pumpAndSettle();
+
+      expect(focused(), isTrue);
+    });
+
+    testWidgets('Cmd+K foca a busca de novo depois do Esc', (tester) async {
+      await _pump(tester, size: wide);
+      bool focused() =>
+          tester.widget<TextField>(find.byType(TextField)).focusNode!.hasFocus;
+
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyK);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
+      await tester.pumpAndSettle();
+      expect(focused(), isTrue);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(focused(), isFalse);
+
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyK);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
+      await tester.pumpAndSettle();
+      expect(focused(), isTrue);
+    });
+
+    testWidgets('em janela estreita Cmd+K volta à lista e foca a busca', (
+      tester,
+    ) async {
+      await _pump(tester, size: narrow);
+      await tester.tap(find.text('Equipe Insight'));
+      await tester.pumpAndSettle();
+      expect(find.byTooltip('Voltar'), findsOneWidget);
+
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyK);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
+      await tester.pumpAndSettle();
+
+      expect(find.byTooltip('Voltar'), findsNothing);
+      expect(
+        tester.widget<TextField>(find.byType(TextField)).focusNode!.hasFocus,
+        isTrue,
+      );
+    });
+
+    testWidgets('Esc limpa a busca', (tester) async {
+      await _pump(
+        tester,
+        size: wide,
+        rooms: _FakeRoomsRepository(rooms: searchable),
+      );
+      await tester.enterText(find.byType(TextField), 'coord');
+      await tester.pumpAndSettle();
+      expect(find.text('Equipe Insight'), findsNothing);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Equipe Insight'), findsOneWidget);
+    });
+  });
+
+  group('cabeçalho da sala', () {
+    final withMembers = [
+      const RoomSummary(id: '!a', name: 'Equipe', memberCount: 5),
+    ];
+
+    testWidgets('mostra a quantidade de membros', (tester) async {
+      await _pump(
+        tester,
+        size: wide,
+        rooms: _FakeRoomsRepository(rooms: withMembers),
+      );
+      await tester.tap(find.text('Equipe'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('5 membros'), findsOneWidget);
+    });
+
+    testWidgets('sem contagem não mostra subtítulo', (tester) async {
+      await _pump(tester, size: wide);
+      await tester.tap(find.text('Equipe Insight'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('membro'), findsNothing);
+    });
+
+    testWidgets('o menu abre os detalhes da sala', (tester) async {
+      await _pump(
+        tester,
+        size: wide,
+        rooms: _FakeRoomsRepository(rooms: withMembers),
+      );
+      await tester.tap(find.text('Equipe'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byTooltip('Mais opções'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Detalhes da sala'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('ID da sala'), findsOneWidget);
+      expect(find.text('!a'), findsOneWidget);
+      expect(find.text('5 membros'), findsNWidgets(2));
+    });
+
+    testWidgets('o menu copia o ID da sala', (tester) async {
+      String? copied;
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          if (call.method == 'Clipboard.setData') {
+            copied = (call.arguments as Map)['text'] as String?;
+          }
+          return null;
+        },
+      );
+      addTearDown(
+        () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          null,
+        ),
+      );
+      await _pump(
+        tester,
+        size: wide,
+        rooms: _FakeRoomsRepository(rooms: withMembers),
+      );
+      await tester.tap(find.text('Equipe'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byTooltip('Mais opções'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Copiar ID da sala'));
+      await tester.pumpAndSettle();
+
+      expect(copied, '!a');
+      expect(find.text('ID da sala copiado.'), findsOneWidget);
+    });
   });
 }

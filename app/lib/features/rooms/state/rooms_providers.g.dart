@@ -215,6 +215,58 @@ abstract class _$SelectedRoomId extends $Notifier<String?> {
   }
 }
 
+@ProviderFor(RoomSearchQuery)
+final roomSearchQueryProvider = RoomSearchQueryProvider._();
+
+final class RoomSearchQueryProvider
+    extends $NotifierProvider<RoomSearchQuery, String> {
+  RoomSearchQueryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'roomSearchQueryProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$roomSearchQueryHash();
+
+  @$internal
+  @override
+  RoomSearchQuery create() => RoomSearchQuery();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(String value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<String>(value),
+    );
+  }
+}
+
+String _$roomSearchQueryHash() => r'c42dfb569a6831ed15d7b4f79a43551a35b633c5';
+
+abstract class _$RoomSearchQuery extends $Notifier<String> {
+  String build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<String, String>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<String, String>,
+              String,
+              Object?,
+              Object?
+            >;
+    return element.handleCreate(ref, build);
+  }
+}
+
 @ProviderFor(selectedRoom)
 final selectedRoomProvider = SelectedRoomProvider._();
 

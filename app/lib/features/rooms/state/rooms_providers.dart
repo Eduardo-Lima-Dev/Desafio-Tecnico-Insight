@@ -49,6 +49,16 @@ class SelectedRoomId extends _$SelectedRoomId {
 }
 
 @riverpod
+class RoomSearchQuery extends _$RoomSearchQuery {
+  @override
+  String build() => '';
+
+  String get query => state;
+
+  set query(String value) => state = value;
+}
+
+@riverpod
 RoomSummary? selectedRoom(Ref ref) {
   final id = ref.watch(selectedRoomIdProvider);
   if (id == null) return null;

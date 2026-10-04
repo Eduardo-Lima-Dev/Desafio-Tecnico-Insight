@@ -47,7 +47,7 @@ void main() {
 
     expect(find.text('Bob'), findsOneWidget);
     expect(find.text('Olá, tudo bem?'), findsOneWidget);
-    expect(find.text('02/01'), findsOneWidget);
+    expect(find.text('09:05'), findsOneWidget);
     expect(find.byIcon(Icons.done), findsNothing);
   });
 

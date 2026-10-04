@@ -4,11 +4,11 @@ import 'package:app/features/chat/state/chat_providers.dart';
 import 'package:app/features/chat/ui/message_composer.dart';
 import 'package:app/features/chat/ui/message_list.dart';
 import 'package:app/features/rooms/state/rooms_providers.dart';
+import 'package:app/features/rooms/ui/conversation_header.dart';
 import 'package:app/features/session/domain/session_failure.dart';
 import 'package:app/features/session/ui/failure_message.dart';
 import 'package:app/shared/ui/empty_state.dart';
 import 'package:app/shared/ui/error_state.dart';
-import 'package:app/shared/ui/seeded_avatar.dart';
 import 'package:app/shared/ui/skeleton.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -34,31 +34,7 @@ class ConversationPanel extends ConsumerWidget {
 
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-          child: Row(
-            children: [
-              if (onBack != null)
-                IconButton(
-                  icon: const Icon(Icons.arrow_back),
-                  tooltip: 'Voltar',
-                  onPressed: onBack,
-                )
-              else
-                const SizedBox(width: 8),
-              SeededAvatar(seed: room.id, initial: room.initial, radius: 20),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  room.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-              ),
-            ],
-          ),
-        ),
+        ConversationHeader(room: room, onBack: onBack),
         const Divider(height: 1),
         Expanded(
           child: messages.when(

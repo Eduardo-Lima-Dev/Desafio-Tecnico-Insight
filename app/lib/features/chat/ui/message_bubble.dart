@@ -71,7 +71,7 @@ class MessageBubble extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        formatRoomTime(message.sentAt),
+                        formatClockTime(message.sentAt),
                         style: theme.textTheme.labelSmall?.copyWith(
                           color: foreground.withValues(alpha: 0.75),
                         ),
