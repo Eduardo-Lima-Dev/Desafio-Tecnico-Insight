@@ -267,25 +267,32 @@ abstract class _$RoomSearchQuery extends $Notifier<String> {
   }
 }
 
-@ProviderFor(selectedRoom)
-final selectedRoomProvider = SelectedRoomProvider._();
+@ProviderFor(roomById)
+final roomByIdProvider = RoomByIdFamily._();
 
-final class SelectedRoomProvider
+final class RoomByIdProvider
     extends $FunctionalProvider<RoomSummary?, RoomSummary?, RoomSummary?>
     with $Provider<RoomSummary?> {
-  SelectedRoomProvider._()
-    : super(
-        from: null,
-        argument: null,
-        retry: null,
-        name: r'selectedRoomProvider',
-        isAutoDispose: true,
-        dependencies: null,
-        $allTransitiveDependencies: null,
-      );
+  RoomByIdProvider._({
+    required RoomByIdFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'roomByIdProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
 
   @override
-  String debugGetCreateSourceHash() => _$selectedRoomHash();
+  String debugGetCreateSourceHash() => _$roomByIdHash();
+
+  @override
+  String toString() {
+    return r'roomByIdProvider'
+        ''
+        '($argument)';
+  }
 
   @$internal
   @override
@@ -294,7 +301,8 @@ final class SelectedRoomProvider
 
   @override
   RoomSummary? create(Ref ref) {
-    return selectedRoom(ref);
+    final argument = this.argument as String;
+    return roomById(ref, argument);
   }
 
   /// {@macro riverpod.override_with_value}
@@ -304,6 +312,34 @@ final class SelectedRoomProvider
       providerOverride: $SyncValueProvider<RoomSummary?>(value),
     );
   }
+
+  @override
+  bool operator ==(Object other) {
+    return other is RoomByIdProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
 }
 
-String _$selectedRoomHash() => r'92ea00b3fac0ec2fca3c669aeadb088ce7c3b4e7';
+String _$roomByIdHash() => r'a57b8304fb6649c47d50d9f589b4f0225136412c';
+
+final class RoomByIdFamily extends $Family
+    with $FunctionalFamilyOverride<RoomSummary?, String> {
+  RoomByIdFamily._()
+    : super(
+        retry: null,
+        name: r'roomByIdProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  RoomByIdProvider call(String roomId) =>
+      RoomByIdProvider._(argument: roomId, from: this);
+
+  @override
+  String toString() => r'roomByIdProvider';
+}

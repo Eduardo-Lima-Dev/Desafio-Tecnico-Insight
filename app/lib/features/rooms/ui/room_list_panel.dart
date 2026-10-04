@@ -3,7 +3,6 @@ import 'package:app/features/conversations/domain/room_invite.dart';
 import 'package:app/features/conversations/state/conversations_providers.dart';
 import 'package:app/features/conversations/ui/conversation_failure_message.dart';
 import 'package:app/features/conversations/ui/invite_tile.dart';
-import 'package:app/features/conversations/ui/new_conversation_dialog.dart';
 import 'package:app/features/rooms/domain/room_summary.dart';
 import 'package:app/features/rooms/domain/search_text.dart';
 import 'package:app/features/rooms/state/rooms_providers.dart';
@@ -19,9 +18,14 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class RoomListPanel extends ConsumerWidget {
-  const RoomListPanel({required this.searchFocusNode, super.key});
+  const RoomListPanel({
+    required this.searchFocusNode,
+    required this.onNewConversation,
+    super.key,
+  });
 
   final FocusNode searchFocusNode;
+  final VoidCallback onNewConversation;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -43,14 +47,7 @@ class RoomListPanel extends ConsumerWidget {
 
     return Column(
       children: [
-        _Header(
-          onNewConversation: () async {
-            final roomId = await showNewConversationDialog(context);
-            if (roomId != null) {
-              ref.read(selectedRoomIdProvider.notifier).select(roomId);
-            }
-          },
-        ),
+        _Header(onNewConversation: onNewConversation),
         _SearchField(focusNode: searchFocusNode),
         Expanded(
           child: rooms.when(

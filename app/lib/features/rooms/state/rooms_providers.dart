@@ -59,12 +59,10 @@ class RoomSearchQuery extends _$RoomSearchQuery {
 }
 
 @riverpod
-RoomSummary? selectedRoom(Ref ref) {
-  final id = ref.watch(selectedRoomIdProvider);
-  if (id == null) return null;
+RoomSummary? roomById(Ref ref, String roomId) {
   final rooms = ref.watch(roomsProvider).value ?? const <RoomSummary>[];
   for (final room in rooms) {
-    if (room.id == id) return room;
+    if (room.id == roomId) return room;
   }
   return null;
 }

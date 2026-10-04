@@ -14,13 +14,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class ConversationPanel extends ConsumerWidget {
-  const ConversationPanel({this.onBack, super.key});
+  const ConversationPanel({this.roomId, this.onBack, super.key});
 
+  final String? roomId;
   final VoidCallback? onBack;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final room = ref.watch(selectedRoomProvider);
+    final id = roomId;
+    final room = id == null ? null : ref.watch(roomByIdProvider(id));
 
     if (room == null) {
       return const EmptyState(

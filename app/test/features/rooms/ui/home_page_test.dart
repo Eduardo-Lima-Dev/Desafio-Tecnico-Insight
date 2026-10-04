@@ -12,6 +12,7 @@ import 'package:app/features/rooms/domain/room_summary.dart';
 import 'package:app/features/rooms/domain/sync_status.dart';
 import 'package:app/features/rooms/state/rooms_providers.dart';
 import 'package:app/features/rooms/ui/connection_banner.dart';
+import 'package:app/features/rooms/ui/conversation_panel.dart';
 import 'package:app/features/rooms/ui/home_page.dart';
 import 'package:app/features/rooms/ui/user_footer.dart';
 import 'package:app/features/session/data/session_repository.dart';
@@ -965,6 +966,111 @@ void main() {
 
       expect(copied, '!a');
       expect(find.text('ID da sala copiado.'), findsOneWidget);
+    });
+  });
+
+  group('atalhos e transições', () {
+    Future<void> press(
+      WidgetTester tester,
+      LogicalKeyboardKey modifier,
+      LogicalKeyboardKey key,
+    ) async {
+      await tester.sendKeyDownEvent(modifier);
+      await tester.sendKeyEvent(key);
+      await tester.sendKeyUpEvent(modifier);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('Esc fecha a conversa aberta em janela larga', (tester) async {
+      await _pump(tester, size: wide);
+      await tester.tap(find.text('Equipe Insight'));
+      await tester.pumpAndSettle();
+      expect(find.text('Selecione uma sala'), findsNothing);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Selecione uma sala'), findsOneWidget);
+    });
+
+    testWidgets('Esc volta para a lista em janela estreita', (tester) async {
+      await _pump(tester, size: narrow);
+      await tester.tap(find.text('Equipe Insight'));
+      await tester.pumpAndSettle();
+      expect(find.byTooltip('Voltar'), findsOneWidget);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+
+      expect(find.byTooltip('Voltar'), findsNothing);
+      expect(find.text('Equipe Insight'), findsOneWidget);
+    });
+
+    testWidgets('Cmd+N e Ctrl+N abrem a nova conversa', (tester) async {
+      await _pump(tester, size: wide);
+
+      await press(tester, LogicalKeyboardKey.metaLeft, LogicalKeyboardKey.keyN);
+      expect(find.byType(Dialog), findsOneWidget);
+
+      await tester.tap(find.text('Cancelar'));
+      await tester.pumpAndSettle();
+      expect(find.byType(Dialog), findsNothing);
+
+      await press(
+        tester,
+        LogicalKeyboardKey.controlLeft,
+        LogicalKeyboardKey.keyN,
+      );
+      expect(find.byType(Dialog), findsOneWidget);
+    });
+
+    testWidgets('trocar de sala mostra a nova conversa', (tester) async {
+      await _pump(tester, size: wide);
+      await tester.tap(find.text('Alice e Bob'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Equipe Insight'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ConversationPanel), findsOneWidget);
+      expect(find.text('Equipe Insight'), findsNWidgets(2));
+    });
+  });
+
+  group('detalhes da sala', () {
+    final room = [const RoomSummary(id: '!a', name: 'Equipe', memberCount: 1)];
+
+    testWidgets('mostra nome, participantes e ID com botão de copiar', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        size: wide,
+        rooms: _FakeRoomsRepository(rooms: room),
+      );
+      await tester.tap(find.text('Equipe'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Mais opções'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Detalhes da sala'));
+      await tester.pumpAndSettle();
+
+      final dialog = find.byType(Dialog);
+      expect(
+        find.descendant(of: dialog, matching: find.text('Equipe')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: dialog, matching: find.text('1 membro')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: dialog, matching: find.byTooltip('Copiar ID')),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.text('Fechar'));
+      await tester.pumpAndSettle();
+      expect(find.byType(Dialog), findsNothing);
     });
   });
 }

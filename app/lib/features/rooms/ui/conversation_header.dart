@@ -1,15 +1,10 @@
 import 'package:app/features/rooms/domain/room_summary.dart';
+import 'package:app/features/rooms/ui/members_label.dart';
+import 'package:app/features/rooms/ui/room_details_dialog.dart';
 import 'package:app/shared/ui/seeded_avatar.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 enum _RoomMenuAction { copyId, details }
-
-String? membersLabel(int count) => switch (count) {
-  <= 0 => null,
-  1 => '1 membro',
-  _ => '$count membros',
-};
 
 class ConversationHeader extends StatelessWidget {
   const ConversationHeader({required this.room, this.onBack, super.key});
@@ -17,20 +12,11 @@ class ConversationHeader extends StatelessWidget {
   final RoomSummary room;
   final VoidCallback? onBack;
 
-  Future<void> _onAction(BuildContext context, _RoomMenuAction action) async {
-    switch (action) {
-      case _RoomMenuAction.copyId:
-        await Clipboard.setData(ClipboardData(text: room.id));
-        if (!context.mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('ID da sala copiado.')),
-        );
-      case _RoomMenuAction.details:
-        await showDialog<void>(
-          context: context,
-          builder: (context) => _RoomDetailsDialog(room: room),
-        );
-    }
+  Future<void> _onAction(BuildContext context, _RoomMenuAction action) {
+    return switch (action) {
+      _RoomMenuAction.copyId => copyRoomId(context, room),
+      _RoomMenuAction.details => showRoomDetailsDialog(context, room),
+    };
   }
 
   @override
@@ -89,56 +75,6 @@ class ConversationHeader extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _RoomDetailsDialog extends StatelessWidget {
-  const _RoomDetailsDialog({required this.room});
-
-  final RoomSummary room;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final members = membersLabel(room.memberCount);
-
-    Widget row(String label, String value) => Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: theme.textTheme.labelMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-          SelectableText(value),
-        ],
-      ),
-    );
-
-    return AlertDialog(
-      title: const Text('Detalhes da sala'),
-      content: SizedBox(
-        width: 360,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            row('Nome', room.name),
-            if (members != null) row('Participantes', members),
-            row('ID da sala', room.id),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Fechar'),
-        ),
-      ],
     );
   }
 }
