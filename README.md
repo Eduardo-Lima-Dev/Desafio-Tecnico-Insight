@@ -4,18 +4,16 @@ Aplicação desktop de mensageria feita com **Flutter**, que conversa com um hom
 
 Alvos: Linux, macOS e Windows.
 
-## Status
+## O que o app faz
 
-O app está funcional. O que ele faz hoje:
-
-- [x] Login em um homeserver Matrix, com a opção de lembrar o servidor e botão para mostrar a senha
-- [x] Sessão guardada no cofre do sistema, restaurada ao abrir o app e encerrada no logout
-- [x] Lista de salas ordenada por atividade, com última mensagem, horário e mensagens não lidas
-- [x] Conversa com mensagens em tempo real, envio (Enter envia, Shift+Enter quebra linha), reenvio de mensagens que falharam e histórico ao rolar até o topo
-- [x] Nova conversa (conversa direta com outro usuário) e convites, com aceitar e recusar
-- [x] Avisos de falta de conexão e de sessão expirada
-- [x] Layout responsivo: lista e conversa lado a lado em janela larga, uma de cada vez em janela estreita
-- [x] Homeserver Matrix local com Docker, já com usuários e conversas de teste
+- Login em um homeserver Matrix, com a opção de lembrar o servidor e botão para mostrar a senha
+- Sessão guardada no cofre do sistema, restaurada ao abrir o app e encerrada no logout
+- Lista de salas ordenada por atividade, com última mensagem, horário e mensagens não lidas
+- Conversa com mensagens em tempo real, envio (Enter envia, Shift+Enter quebra linha), reenvio de mensagens que falharam e histórico ao rolar até o topo
+- Nova conversa (conversa direta com outro usuário) e convites, com aceitar e recusar
+- Avisos de falta de conexão e de sessão expirada
+- Layout responsivo: lista e conversa lado a lado em janela larga, uma de cada vez em janela estreita
+- Homeserver Matrix local com Docker, já com usuários e conversas de teste
 
 O escopo e os requisitos estão em [docs/PRD.md](docs/PRD.md), e os diagramas de fluxo em [docs/FLUXOS.md](docs/FLUXOS.md). O enunciado do desafio está em [docs/desafio-tecnico.md](docs/desafio-tecnico.md).
 
@@ -40,13 +38,26 @@ Não existe back-end próprio. O homeserver Matrix cumpre esse papel, e o códig
 └── docs/                PRD, fluxos (diagramas) e enunciado do desafio
 ```
 
+## Início rápido
+
+Com os [pré-requisitos](#pré-requisitos) instalados, na raiz do repositório:
+
+```bash
+docker compose up -d                 # 1. sobe o homeserver de teste (cerca de 30 s)
+cd app
+flutter pub get                      # 2. baixa as dependências do Dart
+flutter run -d linux                 # 3. roda o app (ou: macos, windows)
+```
+
+Na tela de login, use `http://localhost:8008`, usuário `alice` e senha `senha123`. A primeira execução é lenta, porque compila o Rust.
+
 ## Pré-requisitos
 
 Instale uma vez em cada máquina em que for rodar o app.
 
 **Em todos os sistemas**
 
-- [Flutter SDK](https://docs.flutter.dev/get-started/install) (estável, com Dart 3.3 ou superior)
+- [Flutter SDK](https://docs.flutter.dev/get-started/install) (canal estável; o projeto exige Dart 3.12.2 ou superior, que já vem no Flutter 3.44)
 - [Rust](https://rustup.rs) via rustup
 - [Docker](https://docs.docker.com/get-docker/) com o plugin Compose, para o homeserver
 - `flutter_rust_bridge_codegen` (a versão precisa ser a **2.13.0**, a mesma do `pubspec.yaml`):
@@ -147,7 +158,7 @@ docker compose down -v     # desliga e apaga tudo, voltando ao estado inicial
 
 Os dados ficam em um volume nomeado do Docker (`synapse-data`), então não há pastas nem permissões para ajustar no Linux, macOS ou Windows. Se a porta 8008 já estiver em uso, suba em outra com `SYNAPSE_PORT=18008 docker compose up -d` e use essa porta no app.
 
-O app foi desenvolvido e testado apenas contra o Synapse local deste repositório. Outros homeservers, inclusive o `matrix.org`, **não foram testados**: o app usa o *sliding sync* do Matrix, que o servidor precisa suportar.
+Para usar um homeserver real em vez do local, veja [Usar outro homeserver](#usar-outro-homeserver).
 
 ## Rodar o app
 
@@ -157,15 +168,64 @@ flutter pub get
 flutter run -d linux     # ou: macos, windows
 ```
 
-A primeira execução é lenta, porque compila o Rust.
+A primeira execução é lenta, porque compila o Rust. Para gerar o binário de produção, troque `flutter run` por `flutter build linux` (ou `macos`, `windows`).
 
-### Quando alterar o código Rust exposto ao Dart
+### Quando alterar o código
 
-Depois de mudar funções públicas em `app/rust/src/api/`, regenere as ligações:
+- Funções públicas em `app/rust/src/api/` mudaram: regenere as ligações com `flutter_rust_bridge_codegen generate` (em `app/`).
+- Providers do Riverpod mudaram: rode `dart run build_runner build --delete-conflicting-outputs` (em `app/`).
+
+Os arquivos gerados (`app/lib/src/rust/` e `*.g.dart`) já estão no repositório e não devem ser editados à mão.
+
+## Como usar o app
+
+1. **Login:** informe servidor, usuário e senha. O botão com o ícone de olho mostra ou oculta a senha. Marque "Salvar servidor" para que ele já venha preenchido na próxima vez.
+2. **Sessão:** ao fechar e abrir o app, você continua logado, sem digitar a senha de novo.
+3. **Conversas:** a lista à esquerda mostra as salas por atividade recente, com a última mensagem e um indicador de não lidas. Clique em uma para abri-la. Em janela estreita, a lista e a conversa aparecem uma de cada vez, e a seta de voltar retorna à lista.
+4. **Mensagens:** digite no campo de baixo. Enter envia e Shift+Enter quebra a linha. Role até o topo para carregar mensagens mais antigas. Se uma mensagem falhar, toque no ícone de erro para reenviar.
+5. **Nova conversa:** o botão "Nova conversa" pede o identificador do outro usuário, como `@bob:localhost`, ou só `bob`, que usa o servidor em que você está logado. Se já existir uma conversa com essa pessoa, ela é reaberta.
+6. **Convites:** convites recebidos aparecem em "Convites", no topo da lista, com Aceitar e Recusar.
+7. **Sair:** o botão "Sair", no rodapé da lista, encerra a sessão no servidor e apaga os dados locais.
+
+## Usar outro homeserver
+
+O app funciona com servidores além do Synapse local, desde que suportem o *sliding sync* (MSC4186). Já foi testado no `matrix.org`, no macOS:
+
+1. Crie uma conta de teste com **e-mail e senha** (por exemplo, em https://app.element.io, escolhendo o servidor `matrix.org`). Contas que entram só por login único (Google, GitHub) não funcionam, porque o app autentica por senha.
+2. No login do app, use `https://matrix.org`, o usuário **sem** `@` e **sem** `:matrix.org`, e a senha.
+3. Para criar uma conversa, informe o usuário do outro lado (`bob` vira `@bob:matrix.org`).
+
+Limites do uso fora do ambiente local: o app não decifra salas criptografadas (as criadas em outros clientes costumam ser), e servidores públicos têm limite de requisições mais rígido que o Synapse local.
+
+## Solução de problemas
+
+| Sintoma | O que verificar |
+| ------- | --------------- |
+| `docker compose up` falha ou o `curl` não responde | Confira com `docker compose ps -a` e `docker compose logs synapse`. Se a porta 8008 estiver ocupada, use `SYNAPSE_PORT=18008 docker compose up -d` e informe `http://localhost:18008` no app. |
+| "Não foi possível conectar" no login | O servidor precisa estar ligado e ser HTTPS (só `localhost` aceita `http`). Confira o endereço e a conexão. |
+| "Algo deu errado" ou "Não foi possível acessar os dados locais" no macOS | Confira a permissão de rede de saída (seção Plataformas) e o acesso ao Keychain. O app usa o Keychain tradicional, por causa da assinatura local do build (DT-002 no PRD). |
+| Erro de versão ao gerar a ponte | `flutter_rust_bridge_codegen --version` precisa ser 2.13.0, igual ao do `pubspec.yaml`. |
+| Falha de build no Linux por biblioteca faltando | Instale os pacotes da seção Pré-requisitos (`gtk3` e `libsecret` são os mais esquecidos). |
+| Quer voltar ao estado inicial | `docker compose down -v` apaga o servidor de teste; no app, saia da conta para apagar os dados locais. |
+
+## Testes e verificações
 
 ```bash
-cd app
-flutter_rust_bridge_codegen generate
+# em app/
+dart format lib test
+flutter analyze
+flutter test
+
+# em app/rust/
+cargo fmt --check
+cargo clippy --all-targets -- -D warnings
+cargo test
+```
+
+Os testes Rust de integração são opcionais, exigem o homeserver local ligado e rodam em série, porque compartilham o estado global do cliente (DT-008 no PRD):
+
+```bash
+cargo test -- --ignored --test-threads=1
 ```
 
 ## Plataformas
@@ -173,7 +233,7 @@ flutter_rust_bridge_codegen generate
 | Sistema | Situação |
 | ------- | -------- |
 | Linux   | Desenvolvido e testado |
-| macOS   | Testado: executa normalmente |
+| macOS   | Testado, inclusive contra o `matrix.org` |
 | Windows | Configurado, ainda não testado |
 
 O Flutter desktop não compila de um sistema para outro: para rodar no macOS é preciso estar em um Mac, e no Windows, em um Windows.
@@ -187,8 +247,9 @@ O Flutter desktop não compila de um sistema para outro: para rodar no macOS é 
 
 ## Limitações conhecidas
 
-- **Windows:** configurado, mas ainda não executado.
-- **Outros homeservers:** só o Synapse local foi testado (veja acima).
-- **Criptografia ponta a ponta:** o app não decifra mensagens; elas aparecem como "Mensagem criptografada". As conversas criadas pelo app não são criptografadas.
-- **Escopo das mensagens:** só texto simples, em conversas diretas 1:1. Não há grupos, anexos, edição nem exclusão.
-- O registro completo de limitações está em [docs/PRD.md](docs/PRD.md), na seção 8.
+- **Windows** configurado, mas ainda não executado.
+- **Homeservers:** testado no Synapse local e no `matrix.org`; outros servidores não foram testados.
+- **Criptografia ponta a ponta** não suportada: mensagens de salas criptografadas aparecem como "Mensagem criptografada".
+- **Escopo das mensagens:** só texto simples, em conversas diretas 1:1.
+
+A lista completa está na seção 8 do [PRD](docs/PRD.md), e o plano de evolução, na seção 9.

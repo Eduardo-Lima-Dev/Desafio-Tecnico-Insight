@@ -6,10 +6,7 @@ Este documento descreve os requisitos funcionais, não funcionais, a arquitetura
 
 ## 1. Pedido do Cliente
 
-> Desenvolver uma aplicação desktop de mensageria utilizando Flutter, com foco em arquitetura, qualidade de código, segurança e experiência do usuário.
-> A aplicação deverá se comunicar com um homeserver Matrix e estar preparada para execução em macOS, Windows e Linux.
-> A comunicação com o Matrix deve ser implementada em Rust utilizando Matrix Rust SDK e Flutter Rust Bridge.
-> Não esperamos um produto completo. O objetivo é compreender como o candidato estrutura o problema, define prioridades e prepara a solução para evoluir.
+Cliente de mensageria desktop em Flutter, com a comunicação Matrix em Rust (Matrix Rust SDK e Flutter Rust Bridge), para macOS, Windows e Linux. Não se espera um produto completo: o foco é arquitetura, qualidade, segurança, priorização e preparo para evoluir. O texto integral está em [desafio-tecnico.md](desafio-tecnico.md).
 
 ---
 
@@ -30,6 +27,8 @@ Este documento descreve os requisitos funcionais, não funcionais, a arquitetura
 ---
 
 ## 3. Requisitos Funcionais
+
+Os identificadores (RF-xx) são estáveis e não seguem a ordem de leitura: os mais recentes aparecem junto do assunto a que pertencem.
 
 ### 3.1. Sessão
 
@@ -94,13 +93,6 @@ O código Rust expõe ao Flutter, via Flutter Rust Bridge:
 | Nova conversa          | Cria uma conversa direta 1:1 com outro usuário, sem duplicar.             |
 | Convites               | Lista os convites recebidos e permite aceitar ou recusar.                 |
 
----------------------- | ------------------------------------------------------------------ |
-| Login / logout         | Autentica e encerra a sessão no homeserver.                        |
-| Restaurar sessão       | Reconstrói o cliente a partir da sessão persistida.                |
-| Sync                   | Mantém a sincronização e emite eventos ao Dart por stream.         |
-| Salas                  | Lista as salas e notifica mudanças.                                |
-| Timeline e envio       | Carrega mensagens de uma sala, pagina o histórico e envia texto.   |
-
 ---
 
 ## 4. Requisitos Não Funcionais
@@ -112,6 +104,19 @@ O código Rust expõe ao Flutter, via Flutter Rust Bridge:
 - **Desempenho:** a UI não deve travar durante sync ou carregamento de histórico.
 - **Manutenibilidade:** estrutura de pastas clara, facilitando a evolução do projeto.
 - **Testes:** cobertura dos pontos mais relevantes (lógica de estado, camada Rust, fluxos críticos).
+
+### 4.1. Resumo de segurança
+
+| Tema | Como é tratado |
+| ---- | -------------- |
+| Senha | Digitada no login, enviada ao servidor e descartada: o campo é limpo ao enviar e a senha não é gravada em lugar nenhum. |
+| Token e sessão | Só no cofre do sistema (DT-002). Nunca em arquivo, `shared_preferences` ou log. |
+| Banco local do SDK | SQLite cifrado com uma passphrase aleatória guardada no cofre. |
+| Rede | HTTPS obrigatório. `http://` só é aceito para `localhost`, `127.0.0.1` e `::1`, para o homeserver de desenvolvimento. URLs com usuário e senha embutidos são recusadas. |
+| Logout | Invalida a sessão no servidor e apaga cofre e dados locais, mesmo que o servidor não responda (RF-06). |
+| Token recusado | Apaga os dados locais e volta ao login com aviso (RF-05). |
+| Erros | O Rust devolve erros tipados; a interface mostra mensagens em português, sem detalhes técnicos, URLs com token ou credenciais (RF-20). |
+| Logs | O código de produção não registra senha, token nem corpo de mensagens. |
 
 ---
 
@@ -148,8 +153,6 @@ Os diagramas de fluxo (atividade, estados e sequência) e o diagrama de componen
 ---
 
 ## 6. Decisões Técnicas
-
-Registrar aqui as principais decisões, no formato abaixo.
 
 ### DT-001 — Gerenciamento de estado: Riverpod
 
@@ -202,33 +205,47 @@ Registrar aqui as principais decisões, no formato abaixo.
 
 ### DT-008 — Estado compartilhado no Rust: cliente, sincronização e conversa aberta
 
-- **Contexto:** o app tem uma conta logada por vez, e várias chamadas independentes vindas do Dart (login, sincronização, abrir sala, enviar, histórico, convites) precisam usar o mesmo cliente Matrix, o mesmo serviço de sincronização e a mesma conversa aberta. A ponte expõe funções, e os objetos nativos precisam continuar vivos entre uma chamada e outra.
-- **Decisão:** três módulos internos (`client_holder`, `sync_holder` e `timeline_holder`) guardam o `Client`, o `SyncService` e o `Timeline` da sala aberta em variáveis globais protegidas por `RwLock`. Ficam fora da pasta `api/` de propósito, porque tudo que é público dentro de `api/` vira função exposta ao Dart. Os módulos de `api/` são funções simples que consultam esses guardiões. Cada guardião tem um sinal de parada (`tokio::sync::watch`) que encerra os fluxos de dados ativos quando a sincronização para ou a conversa fecha. Fechar uma conversa só tem efeito se ela ainda for a conversa aberta, para que trocar de sala rápido não feche a nova.
-- **Alternativas consideradas:** devolver ao Dart um objeto opaco do cliente (`RustOpaque`) e passá-lo a cada chamada, o que permitiria várias contas e facilitaria os testes, mas espalharia o objeto pelo estado e pelos repositórios; criar um objeto de sessão a cada login, com mais código para gerir o ciclo de vida.
-- **Consequências:** é simples e suficiente para uma conta por vez, mas só existe uma conta e uma conversa aberta. Os testes Rust de integração compartilham esse estado global e precisam rodar **em série** (`cargo test -- --ignored --test-threads=1`); em paralelo, a maioria falha. Se o produto passar a ter várias contas, será preciso migrar para um objeto opaco, e a mudança ficará restrita ao Rust e à camada de repositórios, porque só ela conhece os tipos da ponte.
+- **Contexto:** o app tem uma conta logada por vez, e chamadas independentes vindas do Dart (login, sincronização, abrir sala, enviar, histórico, convites) precisam usar o mesmo cliente Matrix, o mesmo serviço de sincronização e a mesma conversa aberta.
+- **Decisão:** três módulos internos (`client_holder`, `sync_holder` e `timeline_holder`) guardam o `Client`, o `SyncService` e o `Timeline` da sala aberta em variáveis globais protegidas por `RwLock`. Ficam fora de `api/` de propósito, porque tudo que é público ali vira função exposta ao Dart. Cada um tem um sinal de parada (`tokio::sync::watch`) que encerra os fluxos ativos. Fechar uma conversa só tem efeito se ela ainda for a aberta, para que trocar de sala rápido não feche a nova.
+- **Alternativas consideradas:** devolver ao Dart um objeto opaco do cliente (`RustOpaque`) a cada chamada, o que permitiria várias contas, mas espalharia o objeto pelo estado e pelos repositórios; ou criar um objeto de sessão a cada login, com mais código de ciclo de vida.
+- **Consequências:** simples e suficiente para uma conta e uma conversa por vez. Os testes Rust de integração compartilham esse estado e precisam rodar **em série** (`--test-threads=1`). Para várias contas, seria preciso migrar para o objeto opaco, mudança restrita ao Rust e aos repositórios.
 
 ---
 
 ## 7. Configuração e Execução
 
-- **Pré-requisitos e versões usadas no desenvolvimento:** Flutter 3.44.4 (Dart 3.12), Rust 1.99.0 com `cargo`, `flutter_rust_bridge_codegen` 2.13.0 (precisa ser a mesma versão do pacote `flutter_rust_bridge`) e Docker com o Compose. Por sistema: Linux precisa de `clang`, `cmake`, `ninja`, `pkg-config`, `gtk3` e `libsecret`; macOS, de Xcode e CocoaPods; Windows, do Visual Studio com a carga de trabalho de C++ e do toolchain `stable-msvc` do Rust.
-- **Execução:** `docker compose up -d` na raiz sobe o homeserver de teste; depois, em `app/`, `flutter pub get` e `flutter run -d linux` (ou `macos`, `windows`). A ponte e os providers já vêm gerados no repositório: só é preciso rodar `flutter_rust_bridge_codegen generate` ao mudar a API do Rust, e `dart run build_runner build` ao mudar providers.
-- **Verificações:** `flutter analyze` e `flutter test` em `app/`; `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings` e `cargo test` em `app/rust/`. Os testes Rust de integração são opcionais e exigem o Docker ligado: `cargo test -- --ignored --test-threads=1`.
-- **Passo a passo completo:** README, seções "Pré-requisitos", "Homeserver Matrix local" e "Rodar o app".
-- **Homeserver para testes:** Synapse local via `docker compose up -d`, que gera a configuração, cria os usuários `alice`, `bob`, `carol` e `dave` (senha `senha123`) e doze salas de teste com conversas de assuntos variados (back-end com NestJS, futebol, vôlei, churrasco, filmes e outros), inclusive uma com 80 mensagens para testar a paginação. Detalhes no README.
+O passo a passo (pré-requisitos por sistema, homeserver local, execução, testes e regeneração da ponte) está no [README](../README.md).
+
+Versões usadas no desenvolvimento: Flutter 3.44.4 (Dart 3.12), Rust 1.99.0 e `flutter_rust_bridge_codegen` 2.13.0, que precisa ser a mesma versão do pacote `flutter_rust_bridge`.
+
+Homeserver de testes: Synapse local, subido por `docker compose up -d`, com os usuários `alice`, `bob`, `carol` e `dave` (senha `senha123`) e doze salas de teste, uma delas com 80 mensagens para exercitar a paginação.
 
 ---
 
 ## 8. Limitações e Itens Não Concluídos
 
 - Não são carregadas imagens: os avatares das salas são só a inicial do nome (RF-22), e não há envio nem exibição de anexos.
-- Plataformas: o desenvolvimento e os testes manuais foram feitos no Linux, e o app também foi executado no macOS sem ajustes. O Windows está configurado (ícones e dependências), mas ainda não foi executado.
-- Homeservers: só o Synapse local do Docker foi testado. Outros servidores, inclusive o `matrix.org`, não foram testados; o app usa o sliding sync, que o servidor precisa suportar.
+- Plataformas: o desenvolvimento e os testes manuais foram feitos no Linux, e o app também foi executado no macOS sem ajustes além do Keychain (DT-002). O Windows está configurado (ícones e dependências), mas ainda não foi executado.
+- Homeservers: o app foi testado no Synapse local do Docker e, manualmente no macOS, no `matrix.org`, com uma conta criada com e-mail e senha. Lá funcionaram o login, a sincronização das salas e a criação de uma conversa direta com outro usuário. Outros servidores não foram testados; o app usa o sliding sync, que o servidor precisa suportar. Contas que entram só por login único (SSO) não são suportadas, porque o app autentica por senha.
 - Salas com criptografia ponta a ponta: o app não decifra mensagens, e mostra "Mensagem criptografada" no lugar do texto. Na lista de salas, a última mensagem de uma sala criptografada aparece como "Sem mensagens".
 - Só é possível criar conversas diretas 1:1 (sem grupos, sem busca de usuários); as conversas criadas pelo app não são criptografadas.
 - Só é possível enviar texto simples: não há edição, exclusão, resposta nem anexos.
 - O reenvio de uma mensagem que falhou é manual (toque no ícone de erro); o app não tenta de novo sozinho.
 - O contador de não lidas considera apenas as últimas 20 mensagens de cada sala.
 - Só mensagens de texto são exibidas; imagens, arquivos, enquetes e demais tipos aparecem como "Mensagem não suportada".
-- Dependências Rust (`cargo audit`, 440 pacotes no `Cargo.lock`, banco de avisos do RustSec com 1290 registros): **nenhuma vulnerabilidade**. O aviso de falha de segurança do `anyhow` (RUSTSEC-2026-0190) foi resolvido atualizando-o de 1.0.75 para 1.0.104. Restam três avisos de pacotes **sem manutenção**, que não são vulnerabilidades e vêm de dependências que o projeto não controla: `adler` (RUSTSEC-2025-0056, via `flutter_rust_bridge`), `anymap2` (RUSTSEC-2026-0319, via `matrix-sdk`) e `derivative` (RUSTSEC-2024-0388, que consta no `Cargo.lock`, mas não entra no grafo de dependências compiladas do app). Devem ser revistos quando essas bibliotecas lançarem versões novas.
-- Dependências Dart (`flutter pub outdated`): as dependências de execução estão todas atualizadas; só há versões mais novas de duas ferramentas de desenvolvimento, `very_good_analysis` (11.0.0, salto de versão principal) e `build_runner` (2.16.1). A dependência `cupertino_icons`, que vinha do modelo do Flutter e não era usada, foi removida junto com `integration_test`. Foram mantidas por não trazerem correções de segurança e para evitar regras de lint novas perto da entrega. As demais pendências são dependências transitivas fixadas pelo Flutter e pelos pacotes usados.
+- Dependências: o `cargo audit` não aponta vulnerabilidades. Restam três avisos de pacotes sem manutenção (`adler`, `anymap2` e `derivative`), vindos de dependências transitivas que o projeto não controla, para rever quando elas forem atualizadas. No Dart, as dependências de execução estão atualizadas; só `very_good_analysis` (salto de versão principal) e `build_runner` têm versão mais nova, e ficaram como estão para não trazer regras de lint novas perto da entrega.
+- Uma conversa recém-criada é selecionada na hora, mas só aparece na lista quando a sincronização a traz; até lá, o painel mostra "Selecione uma sala".
+
+---
+
+## 9. Próximos Passos
+
+Em ordem de prioridade, com o que cada passo exige:
+
+1. **Criptografia ponta a ponta.** É a maior lacuna: sem ela, as conversas criadas em outros clientes (criptografadas por padrão) não podem ser lidas. Exige habilitar o módulo de criptografia do SDK, guardar chaves no cofre, verificar dispositivos e fazer o backup das chaves.
+2. **Grupos e busca de usuários.** Criar salas com vários participantes, pesquisar usuários no diretório e convidar para uma sala existente. A camada de conversas (DT-007) já isola esse acréscimo.
+3. **Mídia.** Exibir e enviar imagens e arquivos, e carregar os avatares reais. Muda o modelo de mensagem do domínio e a política de cache em disco.
+4. **Mais ações na mensagem.** Editar, apagar, responder e reações. O Timeline do SDK já expõe essas operações.
+5. **Várias contas.** Trocar os módulos globais do Rust por um objeto opaco do cliente (DT-008). A mudança fica restrita ao Rust e aos repositórios.
+6. **Notificações do sistema e reenvio automático.** Avisar de mensagens novas com a janela em segundo plano e tentar de novo, sozinho, as mensagens que falharam.
+7. **Verificação em todas as plataformas.** Executar e testar no Windows e em mais homeservers, e automatizar `analyze`, `test`, `clippy` e `cargo test` em integração contínua.

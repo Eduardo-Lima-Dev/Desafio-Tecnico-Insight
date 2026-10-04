@@ -10,7 +10,6 @@ Só ficaram aqui os fluxos que mostram algo **não óbvio**: decisões, ramos de
 2. [Diagrama de estados](#2-diagrama-de-estados): os estados da sincronização.
 3. [Diagramas de sequência](#3-diagramas-de-sequência): quem conversa com quem, e em que ordem.
 4. [Diagrama de componentes](#4-diagrama-de-componentes): as camadas da aplicação.
-5. [Pontos de atenção](#5-pontos-de-atenção): comportamentos atuais que merecem registro.
 
 ## Legenda dos participantes
 
@@ -311,13 +310,3 @@ flowchart LR
 | Ponte | Código gerado pelo Flutter Rust Bridge |
 | Rust | Login, sessão, sincronização, salas, conversa, envio, histórico, criação de conversa e convites |
 | Cofre e preferências | Sessão e senha do banco no cofre do sistema; servidor salvo em `shared_preferences` |
-
----
-
-## 5. Pontos de atenção
-
-Comportamentos atuais que os diagramas refletem e que vale conhecer:
-
-1. **Restauração com falha que não é token inválido.** O app volta ao login, mas **mantém** os dados salvos e **não** mostra aviso. Só o token inválido apaga os dados. O aviso "Sua sessão expirou" aparece apenas quando o token é recusado durante o uso (1.4).
-2. **Sala recém-criada.** Depois de criar uma conversa, ela é selecionada na hora, mas só aparece na lista quando a sincronização a traz. Até lá, o painel mostra "Selecione uma sala".
-3. **Conversas criptografadas.** O app não as decifra: a mensagem aparece como "Mensagem criptografada". As conversas criadas pelo app não são criptografadas.
