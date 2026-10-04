@@ -9,6 +9,10 @@ import 'package:app/src/rust/api/session.dart' as rust;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+const _logoutTimeout = Duration(seconds: 8);
+const _deleteAttempts = 5;
+const _deleteRetryDelay = Duration(milliseconds: 200);
+
 class MatrixSessionRepository implements SessionRepository {
   MatrixSessionRepository(this._store);
 
@@ -55,6 +59,9 @@ class MatrixSessionRepository implements SessionRepository {
   }) async {
     final url = normalizeHomeserverUrl(homeserver);
     try {
+      if (await _store.readSession() == null && !await _deleteDataDir()) {
+        throw SessionFailure.storage;
+      }
       final data = await rust.login(
         homeserverUrl: url,
         username: username.trim(),
@@ -83,7 +90,7 @@ class MatrixSessionRepository implements SessionRepository {
   @override
   Future<void> logout() async {
     try {
-      await rust.logout();
+      await rust.logout().timeout(_logoutTimeout);
     } on Object {
       // Mesmo se o servidor não responder, os dados locais são apagados.
     } finally {
@@ -93,9 +100,26 @@ class MatrixSessionRepository implements SessionRepository {
 
   Future<void> _wipeLocalData() async {
     await _store.clear();
+    await _deleteDataDir();
+  }
+
+  /// No Windows a pasta do banco pode continuar em uso por instantes depois
+  /// do logout, então a remoção é repetida. Se falhar, o que sobra é um banco
+  /// cifrado com uma senha que já foi apagada.
+  Future<bool> _deleteDataDir() async {
     final base = await getApplicationSupportDirectory();
     final dir = Directory(p.join(base.path, 'matrix'));
-    if (dir.existsSync()) await dir.delete(recursive: true);
+    for (var attempt = 1; attempt <= _deleteAttempts; attempt++) {
+      try {
+        if (dir.existsSync()) await dir.delete(recursive: true);
+        return true;
+      } on FileSystemException {
+        if (attempt < _deleteAttempts) {
+          await Future<void>.delayed(_deleteRetryDelay);
+        }
+      }
+    }
+    return false;
   }
 
   SessionFailure _toFailure(Object error) {

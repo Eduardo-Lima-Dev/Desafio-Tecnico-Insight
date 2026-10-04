@@ -31,8 +31,11 @@ class SessionController extends _$SessionController {
   }
 
   Future<void> logout() async {
-    await ref.read(sessionRepositoryProvider).logout();
-    state = const AsyncData(Unauthenticated());
+    try {
+      await ref.read(sessionRepositoryProvider).logout();
+    } finally {
+      state = const AsyncData(Unauthenticated());
+    }
   }
 
   Future<void> expire() async {

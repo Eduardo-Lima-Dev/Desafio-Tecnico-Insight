@@ -11,10 +11,11 @@ import 'package:flutter_test/flutter_test.dart';
 const _alice = Session(userId: '@alice:localhost', homeserverUrl: 'http://x');
 
 class FakeSessionRepository implements SessionRepository {
-  FakeSessionRepository({this.saved, this.loginFailure});
+  FakeSessionRepository({this.saved, this.loginFailure, this.logoutError});
 
   Session? saved;
   SessionFailure? loginFailure;
+  Exception? logoutError;
   int logoutCalls = 0;
 
   @override
@@ -35,6 +36,7 @@ class FakeSessionRepository implements SessionRepository {
   Future<void> logout() async {
     logoutCalls++;
     saved = null;
+    if (logoutError != null) throw logoutError!;
   }
 }
 
@@ -251,6 +253,25 @@ void main() {
     await container.read(sessionControllerProvider.notifier).logout();
 
     expect(repo.logoutCalls, 1);
+    expect(
+      container.read(sessionControllerProvider).requireValue,
+      isA<Unauthenticated>(),
+    );
+  });
+
+  test('logout volta ao deslogado mesmo se o repositório falhar', () async {
+    final repo = FakeSessionRepository(
+      saved: _alice,
+      logoutError: Exception('falha ao limpar os dados'),
+    );
+    final container = _container(repo);
+    await container.read(sessionControllerProvider.future);
+
+    await expectLater(
+      container.read(sessionControllerProvider.notifier).logout(),
+      throwsException,
+    );
+
     expect(
       container.read(sessionControllerProvider).requireValue,
       isA<Unauthenticated>(),
