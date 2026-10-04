@@ -1008,12 +1008,14 @@ impl SseDecode for crate::api::rooms::RoomSummary {
         let mut var_lastMessage = <Option<String>>::sse_decode(deserializer);
         let mut var_lastMessageAtMs = <Option<u64>>::sse_decode(deserializer);
         let mut var_unreadCount = <u64>::sse_decode(deserializer);
+        let mut var_memberCount = <u64>::sse_decode(deserializer);
         return crate::api::rooms::RoomSummary {
             id: var_id,
             name: var_name,
             last_message: var_lastMessage,
             last_message_at_ms: var_lastMessageAtMs,
             unread_count: var_unreadCount,
+            member_count: var_memberCount,
         };
     }
 }
@@ -1314,6 +1316,7 @@ impl flutter_rust_bridge::IntoDart for crate::api::rooms::RoomSummary {
             self.last_message.into_into_dart().into_dart(),
             self.last_message_at_ms.into_into_dart().into_dart(),
             self.unread_count.into_into_dart().into_dart(),
+            self.member_count.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -1651,6 +1654,7 @@ impl SseEncode for crate::api::rooms::RoomSummary {
         <Option<String>>::sse_encode(self.last_message, serializer);
         <Option<u64>>::sse_encode(self.last_message_at_ms, serializer);
         <u64>::sse_encode(self.unread_count, serializer);
+        <u64>::sse_encode(self.member_count, serializer);
     }
 }
 

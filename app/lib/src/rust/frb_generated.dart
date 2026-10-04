@@ -918,14 +918,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   RoomSummary dco_decode_room_summary(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 5)
-      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
+    if (arr.length != 6)
+      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
     return RoomSummary(
       id: dco_decode_String(arr[0]),
       name: dco_decode_String(arr[1]),
       lastMessage: dco_decode_opt_String(arr[2]),
       lastMessageAtMs: dco_decode_opt_box_autoadd_u_64(arr[3]),
       unreadCount: dco_decode_u_64(arr[4]),
+      memberCount: dco_decode_u_64(arr[5]),
     );
   }
 
@@ -1201,12 +1202,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_lastMessage = sse_decode_opt_String(deserializer);
     var var_lastMessageAtMs = sse_decode_opt_box_autoadd_u_64(deserializer);
     var var_unreadCount = sse_decode_u_64(deserializer);
+    var var_memberCount = sse_decode_u_64(deserializer);
     return RoomSummary(
       id: var_id,
       name: var_name,
       lastMessage: var_lastMessage,
       lastMessageAtMs: var_lastMessageAtMs,
       unreadCount: var_unreadCount,
+      memberCount: var_memberCount,
     );
   }
 
@@ -1503,6 +1506,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_opt_String(self.lastMessage, serializer);
     sse_encode_opt_box_autoadd_u_64(self.lastMessageAtMs, serializer);
     sse_encode_u_64(self.unreadCount, serializer);
+    sse_encode_u_64(self.memberCount, serializer);
   }
 
   @protected

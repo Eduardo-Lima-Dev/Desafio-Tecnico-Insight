@@ -26,6 +26,7 @@ class RoomSummary {
   final String? lastMessage;
   final BigInt? lastMessageAtMs;
   final BigInt unreadCount;
+  final BigInt memberCount;
 
   const RoomSummary({
     required this.id,
@@ -33,6 +34,7 @@ class RoomSummary {
     this.lastMessage,
     this.lastMessageAtMs,
     required this.unreadCount,
+    required this.memberCount,
   });
 
   @override
@@ -41,7 +43,8 @@ class RoomSummary {
       name.hashCode ^
       lastMessage.hashCode ^
       lastMessageAtMs.hashCode ^
-      unreadCount.hashCode;
+      unreadCount.hashCode ^
+      memberCount.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -52,7 +55,8 @@ class RoomSummary {
           name == other.name &&
           lastMessage == other.lastMessage &&
           lastMessageAtMs == other.lastMessageAtMs &&
-          unreadCount == other.unreadCount;
+          unreadCount == other.unreadCount &&
+          memberCount == other.memberCount;
 }
 
 enum SyncError {

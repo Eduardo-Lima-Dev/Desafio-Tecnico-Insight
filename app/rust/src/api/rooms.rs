@@ -23,6 +23,7 @@ pub struct RoomSummary {
     pub last_message: Option<String>,
     pub last_message_at_ms: Option<u64>,
     pub unread_count: u64,
+    pub member_count: u64,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -197,6 +198,7 @@ fn to_summary(item: &RoomListItem) -> RoomSummary {
         last_message: last_message_text(&item.latest_event()),
         last_message_at_ms: item.latest_event_timestamp().map(|ts| u64::from(ts.0)),
         unread_count: item.num_unread_messages(),
+        member_count: item.joined_members_count(),
     }
 }
 
