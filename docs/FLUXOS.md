@@ -74,7 +74,7 @@ flowchart LR
     V --> P([Principal])
 ```
 
-Regras da URL: o endereço precisa ser `https`, exceto para `localhost`, `127.0.0.1` e `::1`, onde `http` é aceito (desenvolvimento). Sem esquema, o app completa (`https`, ou `http` para localhost). A senha nunca é guardada: o campo é limpo ao enviar. Com a caixa "Salvar servidor" marcada, o servidor é lembrado; desmarcada, o servidor salvo é esquecido.
+Regras da URL: o endereço precisa ser `https`, exceto para `localhost`, `127.0.0.1` e `::1`, onde `http` é aceito (desenvolvimento). Sem esquema, o app completa (`https`, ou `http` para localhost). A senha começa oculta e o ícone de olho no campo a mostra ou oculta (diagrama 2.7); ela nunca é guardada: ao enviar, o campo é limpo e volta a ficar oculto. Com a caixa "Salvar servidor" marcada, o servidor é lembrado; desmarcada, o servidor salvo é esquecido.
 
 ### 1.4. Logout
 
@@ -301,6 +301,23 @@ stateDiagram-v2
     Pendente --> Aceito: Aceitar, vira uma sala da lista
     Pendente --> Recusado: Recusar, o convite some
 ```
+
+### 2.7. Campo de senha do login
+
+Requisito: RF-01.
+
+```mermaid
+stateDiagram-v2
+    state "Senha oculta" as Oculta
+    state "Senha visível" as Visivel
+    [*] --> Oculta
+    Oculta --> Visivel: toca no olho
+    Visivel --> Oculta: toca no olho riscado
+    Visivel --> Oculta: envia o login
+    Oculta --> Oculta: envia o login
+```
+
+O texto digitado não se perde ao alternar. Ao enviar o login, o campo é limpo e volta a ficar oculto, para que a senha nunca permaneça à mostra depois de enviada.
 
 ---
 

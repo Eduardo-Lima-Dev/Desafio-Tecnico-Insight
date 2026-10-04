@@ -35,7 +35,7 @@ Este documento descreve os requisitos funcionais, não funcionais, a arquitetura
 
 | ID    | Requisito                                                                                              |
 | ----- | ------------------------------------------------------------------------------------------------------ |
-| RF-01 | O usuário informa homeserver, usuário e senha para autenticar.                                         |
+| RF-01 | O usuário informa homeserver, usuário e senha para autenticar. O campo de senha começa oculto e tem um botão (ícone de olho) para mostrá-la ou ocultá-la.                                         |
 | RF-02 | O homeserver informado é validado (URL válida e servidor Matrix alcançável) antes do login.            |
 | RF-03 | Após login bem-sucedido, a sessão é persistida de forma segura.                                        |
 | RF-04 | Ao abrir o app, a sessão salva é restaurada automaticamente, sem pedir login de novo.                  |
