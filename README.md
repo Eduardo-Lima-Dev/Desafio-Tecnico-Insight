@@ -245,7 +245,7 @@ Também dá para rodar o workflow Release manualmente na aba **Actions**. Nesse 
 | Sistema | Arquivo | Como abrir |
 | ------- | ------- | ---------- |
 | Windows | `insight-matrix-<versão>-windows-x64.zip` | Extraia e execute `app.exe`. Sem assinatura, o SmartScreen avisa: clique em "Mais informações" e "Executar assim mesmo". |
-| macOS (Apple Silicon) | `insight-matrix-<versão>-macos-arm64.dmg` | Arraste para Aplicativos. Sem assinatura da Apple, o Gatekeeper bloqueia: clique com o botão direito, "Abrir", ou rode `xattr -dr com.apple.quarantine "/Applications/Insight Matrix.app"`. |
+| macOS (Apple Silicon) | `insight-matrix-<versão>-macos-arm64.dmg` | Arraste para Aplicativos. Sem assinatura da Apple, o Gatekeeper bloqueia com "não foi aberto". No macOS 15 ou mais novo, abra **Ajustes do Sistema > Privacidade e Segurança**, role até o aviso do Insight Matrix e clique em **Abrir Mesmo Assim**. Ou, no Terminal: `xattr -dr com.apple.quarantine "/Applications/Insight Matrix.app"`. |
 | Linux (x86_64) | `insight-matrix-<versão>-linux-x86_64.AppImage` | `chmod +x` no arquivo e execute. É preciso ter `libsecret` e GTK 3 instalados no sistema. |
 
 Os executáveis não são assinados. O build do macOS é só para Apple Silicon.
