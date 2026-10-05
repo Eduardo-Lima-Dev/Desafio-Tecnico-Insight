@@ -6,7 +6,7 @@ Este documento descreve os requisitos funcionais, não funcionais, a arquitetura
 
 ## 1. Pedido do Cliente
 
-Cliente de mensageria desktop em Flutter, com a comunicação Matrix em Rust (Matrix Rust SDK e Flutter Rust Bridge), para macOS, Windows e Linux. Não se espera um produto completo: o foco é arquitetura, qualidade, segurança, priorização e preparo para evoluir. O texto integral está em [desafio-tecnico.md](desafio-tecnico.md).
+Cliente de mensageria desktop em Flutter, com a comunicação Matrix em Rust (Matrix Rust SDK e Flutter Rust Bridge), para macOS, Windows e Linux. Não se espera um produto completo: o foco é arquitetura, qualidade, segurança, priorização e preparo para evoluir.
 
 ---
 
@@ -19,6 +19,7 @@ Cliente de mensageria desktop em Flutter, com a comunicação Matrix em Rust (Ma
 | Integração Matrix   | Rust + Matrix Rust SDK (`matrix-sdk` e `matrix-sdk-ui` 0.19.1)             |
 | Ponte Dart <-> Rust | Flutter Rust Bridge 2.13.0                                                 |
 | Persistência local  | Sessão e senha do banco no cofre do sistema (`flutter_secure_storage`), servidor salvo em `shared_preferences` e cache do SDK em SQLite, ver DT-002 |
+| Criptografia        | E2EE do `matrix-sdk` (chaves no banco SQLite cifrado); backup e recuperação pelo armazenamento de segredos da conta, ver DT-010 |
 | Plataformas         | Linux, macOS, Windows                                                      |
 | Janela e tema       | `window_manager` (tamanho inicial e mínimo da janela); fonte Inter embutida; tema claro e escuro conforme o sistema |
 | CI e distribuição   | GitHub Actions: CI (análise, testes e build nos três sistemas) e Release (executáveis), ver DT-009 |
@@ -82,6 +83,14 @@ Os identificadores (RF-xx) são estáveis e não seguem a ordem de leitura: os m
 | RF-27 | Convites recebidos aparecem em uma seção "Convites" no topo da lista, com as ações Aceitar e Recusar. Aceitar abre a conversa. |
 | RF-30 | Atalhos de teclado: Ctrl+K (⌘K no macOS) foca a busca, Ctrl+N (⌘N) abre "Nova conversa" e Esc fecha a conversa aberta ou limpa a busca. |
 
+### 3.5. Criptografia
+
+| ID    | Requisito |
+| ----- | --------- |
+| RF-31 | O app lê e envia mensagens em salas com criptografia ponta a ponta, e as conversas diretas que cria são criptografadas. |
+| RF-32 | Uma mensagem que não pôde ser decifrada mostra o motivo: aguardando a chave, anterior a este dispositivo, ou indisponível (por exemplo, enviada antes de o usuário entrar na sala). |
+| RF-33 | O botão de chave no rodapé abre o backup das mensagens. Se a conta já tem backup mas este dispositivo não tem as chaves (estado incompleto), o app pede a chave de recuperação e, com ela, passa a ler o histórico; uma chave incorreta é recusada. Se a conta não tem backup, o app oferece ativá-lo e mostra a chave de recuperação uma única vez, com botão de copiar. No estado incompleto, uma conversa com mensagens ilegíveis mostra o aviso "Recuperar chaves". Ao sair da conta sem backup ativo, o app avisa que as mensagens criptografadas recebidas neste dispositivo não poderão ser lidas depois. |
+
 ---
 
 ## 4. Requisitos Não Funcionais
@@ -100,10 +109,12 @@ Os identificadores (RF-xx) são estáveis e não seguem a ordem de leitura: os m
 | ---- | -------------- |
 | Senha | Digitada no login, enviada ao servidor e descartada: o campo é limpo ao enviar e a senha não é gravada em lugar nenhum. |
 | Token e sessão | Só no cofre do sistema (DT-002). Nunca em arquivo, `shared_preferences` ou log. |
-| Banco local do SDK | SQLite cifrado com uma passphrase aleatória guardada no cofre. |
+| Banco local do SDK | SQLite cifrado com uma passphrase aleatória guardada no cofre. Ele guarda também as chaves de criptografia das conversas. |
+| Chave de recuperação | Nunca é gravada nem registrada em log. Só aparece na tela uma vez, quando o backup é ativado, ou é digitada pelo usuário para recuperar o histórico (DT-010). |
 | Rede | HTTPS obrigatório. `http://` só é aceito para `localhost`, `127.0.0.1` e `::1`, para o homeserver de desenvolvimento. URLs com usuário e senha embutidos são recusadas. |
 | Logout | Invalida a sessão no servidor e apaga cofre e dados locais, mesmo que o servidor não responda (RF-06). |
 | Token recusado | Apaga os dados locais e volta ao login com aviso (RF-05). |
+| Mensagens | As conversas criadas pelo app são criptografadas ponta a ponta (DT-010). |
 | Erros | O Rust devolve erros tipados; a interface mostra mensagens em português, sem detalhes técnicos, URLs com token ou credenciais (RF-20). |
 | Logs | O código de produção não registra senha, token nem corpo de mensagens. |
 
@@ -143,12 +154,13 @@ Os diagramas de fluxo, estados e sequência estão em [FLUXOS.md](FLUXOS.md).
 - **Alternativas consideradas:** BLoC (mais código para fluxos baseados em stream); Provider (DI e testes mais fracos); `setState` (não escala); GetX (mistura responsabilidades).
 - **Consequências:** `AsyncValue` cobre carregando/erro/dados; `autoDispose` cancela subscriptions de stream; fakes entram via `overrides` nos testes, sem pacote de DI extra. Exige `build_runner` para gerar os providers.
 
-### DT-002 — Armazenamento seguro da sessão: flutter_secure_storage
+### DT-002 — Armazenamento seguro da sessão: cofre do sistema (flutter_secure_storage)
 
-- **Contexto:** credenciais e tokens não podem ficar em texto puro nem em logs (RNF de segurança, RF-03).
-- **Decisão:** `flutter_secure_storage` guarda a sessão serializada e uma passphrase aleatória que protege o banco SQLite do Matrix SDK. No Linux usa o libsecret; no macOS, o Keychain; no Windows, o Credential Manager. Logout e sessão inválida apagam sessão e passphrase (RF-05, RF-06).
-- **Alternativas consideradas:** `shared_preferences` ou arquivo JSON (texto puro, rejeitado); guardar tudo só no Rust (a restauração via Dart ficaria mais acoplada ao SDK).
-- **Consequências:** o Linux depende de um serviço de segredos (libsecret) disponível na máquina. O banco só é legível com a passphrase guardada no cofre do SO.
+- **Contexto:** credenciais e tokens não podem ficar em texto puro nem em logs (RNF de segurança, RF-03). Era preciso decidir onde guardar a sessão entre execuções do app.
+- **Decisão:** `flutter_secure_storage` guarda duas chaves no cofre do sistema: a sessão serializada (`matrix_session`: usuário, servidor, dispositivo e token de acesso) e uma passphrase aleatória de 32 bytes (`matrix_store_passphrase`, gerada com `Random.secure`) que cifra o banco SQLite do Matrix SDK. No Linux o cofre é o libsecret; no macOS, o Keychain; no Windows, o Credential Manager. A senha do usuário nunca é gravada: só vai ao servidor no login. Logout e sessão recusada pelo servidor apagam as duas chaves e a pasta de dados do SDK (RF-05, RF-06).
+- **Ajuste no macOS:** por padrão o plugin usa o Keychain "data protection", que exige o entitlement `keychain-access-groups`, disponível só em builds assinados com um Apple Developer Team. No build local (assinatura ad-hoc), a gravação falhava com o erro -34018 e o login terminava em "Algo deu errado". O app usa então o Keychain tradicional (`usesDataProtectionKeychain: false`, em `app_secure_storage.dart`), que funciona no sandbox com a assinatura ad-hoc. Em uma distribuição assinada com Team, o "data protection" poderia voltar a ser usado.
+- **Alternativas consideradas:** `shared_preferences` ou arquivo JSON (texto puro, rejeitado); arquivo cifrado com chave própria (a chave teria de ficar em algum lugar, e o cofre do sistema já resolve isso); guardar tudo só no Rust (a restauração via Dart ficaria mais acoplada ao SDK).
+- **Consequências:** o Linux depende de um serviço de segredos (libsecret) disponível na máquina. O banco só é legível com a passphrase guardada no cofre, e ele guarda também as chaves de criptografia das conversas (DT-010), o que torna essa passphrase ainda mais importante. O servidor escolhido no login (que não é segredo) fica à parte, em `shared_preferences`. No macOS, o Keychain tradicional protege menos que o "data protection" em apps distribuídos, o que é aceitável para este escopo.
 
 ### DT-003 — Arquitetura em camadas por feature
 
@@ -181,9 +193,9 @@ Os diagramas de fluxo, estados e sequência estão em [FLUXOS.md](FLUXOS.md).
 ### DT-007 — Nova conversa e convites
 
 - **Contexto:** sem criar conversas, o usuário só enxergaria as salas que já existem no servidor; e quem recebe uma conversa nova só a vê depois de aceitar o convite (RF-26, RF-27).
-- **Decisão:** a conversa direta é criada com `create_room` (`is_direct`, preset de conversa privada confiável e convite à outra pessoa), **sem criptografia**, em vez do `create_dm` do SDK, que criptografa por padrão. Antes de criar, o Rust consulta o perfil da outra pessoa e procura uma conversa direta existente (inclusive com convite pendente) para não duplicar. Os convites vêm de um segundo stream do `RoomListService` filtrado por salas convidadas; aceitar usa `join` e recusar usa `leave`.
-- **Alternativas consideradas:** `create_dm` (conversas criptografadas, que o app não exibe como texto); criar a sala sem checar o perfil (o servidor aceita convidar usuários inexistentes e deixaria uma sala órfã).
-- **Consequências:** só conversas diretas 1:1; não há criação de grupos, busca de usuários nem lista de contatos. O identificador é normalizado (`bob` vira `@bob:<servidor do usuário>`).
+- **Decisão:** a conversa direta é criada com o `create_dm` do SDK (`is_direct`, preset de conversa privada confiável, convite à outra pessoa e criptografia ativada, DT-010). Antes de criar, o Rust consulta o perfil da outra pessoa e procura uma conversa direta existente (inclusive com convite pendente) para não duplicar. Os convites vêm de um segundo stream do `RoomListService` filtrado por salas convidadas; aceitar usa `join` e recusar usa `leave`.
+- **Alternativas consideradas:** criar a sala sem checar o perfil (o servidor aceita convidar usuários inexistentes e deixaria uma sala órfã); criar a sala sem criptografia (era a decisão original, quando o app ainda não tratava mensagens criptografadas).
+- **Consequências:** só conversas diretas 1:1; não há criação de grupos, busca de usuários nem lista de contatos. O identificador é normalizado (`bob` vira `@bob:<servidor do usuário>`). Quem recebe a conversa precisa de um cliente com criptografia para lê-la.
 
 ### DT-008 — Estado compartilhado no Rust: cliente, sincronização e conversa aberta
 
@@ -200,6 +212,15 @@ Os diagramas de fluxo, estados e sequência estão em [FLUXOS.md](FLUXOS.md).
 - **Decisão:** tema próprio (claro e escuro conforme o sistema) com a fonte Inter embutida, para o texto ficar igual em todos os sistemas, e `window_manager` para definir título, tamanho inicial e tamanho mínimo da janela. Dois workflows do GitHub Actions: **CI**, que roda só quando algo em `app/` muda e executa formatação, análise, testes e o build em Linux, Windows e macOS; e **Release**, que ao receber uma tag `v*` gera um AppImage (Linux x86_64), um zip (Windows x64) e um dmg (macOS Apple Silicon) e os publica na aba Releases. O CI usa o Flutter 3.47.6, enquanto o desenvolvimento local usou o 3.44.4.
 - **Alternativas consideradas:** usar as fontes do sistema (aparência diferente em cada plataforma); distribuir só o código-fonte (exige o ambiente completo para quem avalia).
 - **Consequências:** os executáveis **não são assinados**. No macOS, o Gatekeeper impede abrir o app baixado sem passos manuais (veja o README), e por isso a instalação do app gerado no Mac ainda traz problemas até haver assinatura com um Apple Developer Team. No Windows, o SmartScreen avisa. O build do macOS é só para Apple Silicon. O CI garante que o app compila nos três sistemas, mas não que ele foi executado no Windows.
+
+---
+
+### DT-010 — Criptografia ponta a ponta: chaves, backup e recuperação
+
+- **Contexto:** o `matrix-sdk` já traz a criptografia (feature `e2e-encryption`, ativa por padrão) e o banco cifrado (DT-002) já guarda as chaves, mas o app só mostrava "Mensagem criptografada". Faltava criar conversas criptografadas, explicar por que uma mensagem não abre e permitir ler o histórico anterior a este dispositivo.
+- **Decisão:** (1) o cliente é criado com `EncryptionSettings`: assinatura cruzada automática no login por senha (se falhar, o erro só é registrado e o login segue), download de todas as chaves do backup depois da recuperação (`OneShot`) e nenhum backup criado sem o usuário pedir. (2) As conversas diretas usam o `create_dm`, que criptografa (DT-007). (3) O Rust classifica a causa da falha de decifragem em três tipos (aguardando a chave, anterior ao dispositivo, indisponível). (4) O backup e a recuperação usam o `recovery()` do SDK, com `watch_recovery_status`, `recover_keys` e `enable_recovery` e erros tipados. A chave de recuperação nunca é guardada nem registrada: é digitada pelo usuário ou mostrada uma única vez ao ativar o backup. (5) A interface tem o botão de chave no rodapé, o aviso na conversa e o aviso ao sair. (6) Dependência direta nova, `matrix-sdk-crypto`, porque o `matrix-sdk` não reexporta o tipo da causa de falha; ela já estava na árvore e nada novo é compilado.
+- **Alternativas consideradas:** verificação interativa de dispositivos (emojis ou QR) para receber as chaves de outro dispositivo, que exige muito mais telas e estados e ficou como próximo passo; guardar a chave de recuperação no cofre (aumenta a superfície, pois ela abre todo o histórico); criar o backup automaticamente no login (geraria uma chave que o usuário nunca viu, inútil para recuperar); baixar uma chave por vez (`AfterDecryptionFailure`), com o histórico aparecendo aos poucos.
+- **Consequências:** mensagens novas em salas criptografadas são lidas se o remetente compartilhar a chave com este dispositivo, o que exige que o dispositivo já tenha publicado as suas chaves, ou seja, que o app já tenha sincronizado. O histórico anterior só abre com a chave de recuperação. Sem verificação, os outros clientes mostram esta sessão como não verificada. O logout apaga as chaves locais (RF-06), por isso o app avisa quando não há backup. Os testes de integração usam dois dispositivos da mesma conta e **alteram o estado do backup da conta `alice`**, então devem rodar em um Synapse separado (README). Os fluxos de criptografia só foram testados no Synapse local, não no `matrix.org`.
 
 ---
 
@@ -225,7 +246,8 @@ Homeserver de testes: Synapse local, subido por `docker compose up -d`, com os u
 
 **Segurança**
 
-- Salas com criptografia ponta a ponta: o app não decifra mensagens, e mostra "Mensagem criptografada" no lugar do texto. Na lista, a última mensagem de uma sala criptografada aparece como "Sem mensagens". As conversas criadas pelo app não são criptografadas.
+- Criptografia ponta a ponta: o app lê e envia mensagens em salas criptografadas, e as conversas que cria são criptografadas (DT-010). O histórico anterior a este dispositivo só abre com a chave de recuperação da conta. Não há verificação de dispositivos (emojis ou QR), então os outros clientes mostram esta sessão como não verificada. Mensagens cuja chave ninguém compartilhou com este dispositivo continuam ilegíveis, e o app mostra o motivo.
+- Sem backup ativo, sair da conta apaga as chaves locais e as mensagens criptografadas recebidas deixam de poder ser lidas. O app avisa antes de sair.
 - Contas que entram só por login único (SSO) não são suportadas, porque o app autentica por senha.
 - Os executáveis das Releases não são assinados (DT-009). **No macOS, a instalação do app gerado ainda traz problemas:** o Gatekeeper bloqueia um app sem assinatura da Apple e é preciso liberá-lo manualmente (passos no README). No Windows, o SmartScreen avisa. O build do macOS é só para Apple Silicon.
 - Dependências: o `cargo audit` não aponta vulnerabilidades. Restam três avisos de pacotes sem manutenção (`adler`, `anymap2` e `derivative`), vindos de dependências transitivas que o projeto não controla. No Dart, as dependências de execução estão atualizadas; só `very_good_analysis` (salto de versão principal) e `build_runner` têm versão mais nova, e ficaram como estão para não trazer regras de lint novas perto da entrega.
@@ -233,7 +255,7 @@ Homeserver de testes: Synapse local, subido por `docker compose up -d`, com os u
 **Verificação**
 
 - Plataformas: o desenvolvimento e os testes manuais foram feitos no Linux, e o app também foi executado no macOS a partir do código-fonte, sem ajustes além do Keychain (DT-002). No Windows, o CI só compila o app; ele ainda não foi executado.
-- Homeservers: o app foi testado no Synapse local do Docker e, manualmente no macOS, no `matrix.org`, com uma conta criada com e-mail e senha (login, sincronização das salas e criação de uma conversa direta). Outros servidores não foram testados; o servidor precisa suportar o sliding sync.
+- Homeservers: o app foi testado no Synapse local do Docker e, manualmente no macOS, no `matrix.org`, com uma conta criada com e-mail e senha (login, sincronização das salas e criação de uma conversa direta). Os fluxos de criptografia (DT-010) foram testados só no Synapse local. Outros servidores não foram testados; o servidor precisa suportar o sliding sync.
 
 ---
 
@@ -241,7 +263,7 @@ Homeserver de testes: Synapse local, subido por `docker compose up -d`, com os u
 
 Em ordem de prioridade, com o que cada passo exige:
 
-1. **Criptografia ponta a ponta.** É a maior lacuna: sem ela, as conversas criadas em outros clientes (criptografadas por padrão) não podem ser lidas. Exige habilitar o módulo de criptografia do SDK, guardar chaves no cofre, verificar dispositivos e fazer o backup das chaves.
+1. **Verificação de dispositivos e gestão de chaves.** Verificação interativa (emojis ou QR) entre dispositivos, para que as outras pessoas vejam esta sessão como confiável e para receber chaves de outro dispositivo; troca ou redefinição da chave de recuperação; e testes dos fluxos de criptografia no `matrix.org`. A base (backup e recuperação) já existe (DT-010).
 2. **Grupos e busca de usuários.** Criar salas com vários participantes, pesquisar usuários no diretório e convidar para uma sala existente. A camada de conversas (DT-007) já isola esse acréscimo.
 3. **Mídia.** Exibir e enviar imagens e arquivos, e carregar os avatares reais. Muda o modelo de mensagem do domínio e a política de cache em disco.
 4. **Mais ações na mensagem.** Editar, apagar, responder e reações. O Timeline do SDK já expõe essas operações.

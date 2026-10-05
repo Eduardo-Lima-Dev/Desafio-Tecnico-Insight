@@ -135,7 +135,27 @@ flowchart LR
     H --> R2(["Abre a nova conversa"])
 ```
 
-O identificador aceita `@bob:localhost`, `bob:localhost`, `@bob` ou só `bob` (o app completa com o servidor do usuário logado). A conversa criada é direta (1:1) e **não é criptografada**. O servidor aceita convidar usuários que não existem e deixaria uma sala órfã, por isso o app consulta o perfil antes de criar.
+O identificador aceita `@bob:localhost`, `bob:localhost`, `@bob` ou só `bob` (o app completa com o servidor do usuário logado). A conversa criada é direta (1:1) e **criptografada**. O servidor aceita convidar usuários que não existem e deixaria uma sala órfã, por isso o app consulta o perfil antes de criar.
+
+### 1.7. Backup e recuperação das mensagens
+
+Requisito: RF-33.
+
+```mermaid
+flowchart LR
+    A([Toca no botão de chave]) --> B{"Estado do backup"}
+    B -- Incompleto --> C["Informa a chave de recuperação"]
+    C --> D{"Chave correta?"}
+    D -- Não --> E1[Erro no diálogo]
+    D -- Sim --> F["Chaves importadas e histórico baixado"]
+    F --> R1(["Mensagens antigas passam a abrir"])
+    B -- Desativado --> G["Ativa o backup"]
+    G --> H["Mostra a chave uma única vez"]
+    H --> R2(["Backup ativo"])
+    B -- Ativo --> R3(["Informa que o backup está ativo"])
+```
+
+"Incompleto" quer dizer que a conta já tem backup, mas este dispositivo ainda não tem as chaves. "Desativado" quer dizer que a conta não tem backup. A chave de recuperação nunca é guardada pelo app: ela só aparece na tela quando o backup é ativado, ou é digitada pelo usuário.
 
 ---
 
@@ -294,5 +314,5 @@ flowchart LR
 | Estado | Providers e notifiers do Riverpod; modelam carregando, vazio, erro e dados |
 | Repositórios | Única camada que conhece os tipos da ponte; converte para modelos de domínio |
 | Ponte | Código gerado pelo Flutter Rust Bridge |
-| Rust | Login, sessão, sincronização, salas, conversa, envio, histórico, criação de conversa e convites |
+| Rust | Login, sessão, sincronização, salas, conversa, envio, histórico, criação de conversa, convites, criptografia e recuperação de chaves |
 | Cofre e preferências | Sessão e senha do banco no cofre do sistema; servidor salvo em `shared_preferences` |

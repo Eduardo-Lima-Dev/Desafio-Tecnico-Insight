@@ -18,6 +18,7 @@ Alvos: Linux, macOS e Windows.
 - Conversa com mensagens em tempo real, envio (Enter envia, Shift+Enter quebra linha), reenvio de mensagens que falharam e histórico ao rolar até o topo
 - Cabeçalho da sala com a quantidade de membros e detalhes da sala (participantes e ID)
 - Nova conversa (conversa direta com outro usuário) e convites, com aceitar e recusar
+- Mensagens criptografadas: lê e envia em salas com criptografia ponta a ponta, cria conversas criptografadas e recupera o histórico com a chave de recuperação da conta
 - Atalhos: Ctrl+K (⌘K) busca, Ctrl+N (⌘N) nova conversa, Esc fecha a conversa
 - Avisos de falta de conexão e de sessão expirada
 - Layout responsivo e tema claro e escuro conforme o sistema
@@ -179,7 +180,8 @@ Os arquivos gerados (`app/lib/src/rust/` e `*.g.dart`) já estão no repositóri
 4. **Mensagens:** digite no campo de baixo. Enter envia e Shift+Enter quebra a linha. Role até o topo para carregar mensagens mais antigas. Se uma mensagem falhar, toque no ícone de erro para reenviar.
 5. **Nova conversa:** o botão "Nova conversa" pede o identificador do outro usuário, como `@bob:localhost`, ou só `bob`, que usa o servidor em que você está logado. Se já existir uma conversa com essa pessoa, ela é reaberta.
 6. **Convites:** convites recebidos aparecem em "Convites", no topo da lista, com Aceitar e Recusar.
-7. **Sair:** o botão "Sair", no rodapé da lista, encerra a sessão no servidor e apaga os dados locais.
+7. **Mensagens criptografadas e backup:** o botão de chave, no rodapé da lista, abre o backup das mensagens. Se a conta já tem backup (por exemplo, criado no Element), o app pede a **chave de recuperação** e passa a ler o histórico antigo. Se não tem, ele oferece ativar o backup e mostra a chave **uma única vez**: guarde-a em lugar seguro, porque sem ela não há como ler o histórico em outro dispositivo. Uma mensagem que não pôde ser lida mostra o motivo.
+8. **Sair:** o botão "Sair", no rodapé da lista, encerra a sessão no servidor e apaga os dados locais.
 
 ## Usar outro homeserver
 
@@ -189,7 +191,7 @@ O app funciona com servidores além do Synapse local, desde que suportem o *slid
 2. No login do app, use `https://matrix.org`, o usuário **sem** `@` e **sem** `:matrix.org`, e a senha.
 3. Para criar uma conversa, informe o usuário do outro lado (`bob` vira `@bob:matrix.org`).
 
-Limites do uso fora do ambiente local: o app não decifra salas criptografadas (as criadas em outros clientes costumam ser), e servidores públicos têm limite de requisições mais rígido que o Synapse local.
+Limites do uso fora do ambiente local: os fluxos de criptografia só foram testados no Synapse local, e servidores públicos têm limite de requisições mais rígido que o Synapse local.
 
 ## Solução de problemas
 
@@ -209,7 +211,7 @@ Limites do uso fora do ambiente local: o app não decifra salas criptografadas (
 
 ## Testes e verificações
 
-São 150 testes Dart (unidade e widget) e 5 testes Rust, mais 4 de integração opcionais.
+São 168 testes Dart (unidade e widget) e 12 testes Rust, mais 6 de integração opcionais (sincronização, conversas e criptografia).
 
 ```bash
 # em app/
@@ -227,6 +229,14 @@ Os testes Rust de integração são opcionais, exigem o homeserver local ligado 
 
 ```bash
 cargo test -- --ignored --test-threads=1
+```
+
+Os testes de criptografia **alteram o estado do backup da conta `alice`** (criam e apagam o backup de chaves). Para não mexer no servidor de desenvolvimento, rode-os contra um Synapse separado, em outra porta:
+
+```bash
+SYNAPSE_PORT=18009 docker compose -p testes up -d
+SYNAPSE_URL=http://localhost:18009 cargo test -- --ignored --test-threads=1   # em app/rust/
+docker compose -p testes down -v
 ```
 
 ## Executáveis prontos (Releases)
@@ -274,7 +284,7 @@ O Flutter desktop não compila de um sistema para outro: para rodar no macOS é 
 
 - **macOS:** os executáveis das Releases não são assinados, e o Mac bloqueia a instalação sem liberação manual.
 - **Homeservers:** testado no Synapse local e no `matrix.org`; outros servidores não foram testados.
-- **Criptografia ponta a ponta** não suportada, mensagens de salas criptografadas aparecem como "Mensagem criptografada".
+- **Criptografia ponta a ponta:** o histórico anterior a este dispositivo só abre com a chave de recuperação, e não há verificação de dispositivos, então os outros clientes mostram esta sessão como não verificada.
 - **Escopo das mensagens:** só texto simples, em conversas diretas 1:1.
 
 A lista completa está na seção 8 do [PRD](docs/PRD.md), e o plano de evolução, na seção 9.
