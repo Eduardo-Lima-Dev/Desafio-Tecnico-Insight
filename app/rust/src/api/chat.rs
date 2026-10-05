@@ -6,9 +6,10 @@ use futures_util::{pin_mut, StreamExt};
 use matrix_sdk::ruma::api::client::receipt::create_receipt::v3::ReceiptType;
 use matrix_sdk::ruma::events::room::message::{MessageType, RoomMessageEventContent};
 use matrix_sdk::ruma::RoomId;
+use matrix_sdk_crypto::types::events::UtdCause;
 use matrix_sdk_ui::timeline::{
-    EventSendState, EventTimelineItem, MsgLikeKind, Timeline, TimelineBuilder, TimelineDetails,
-    TimelineItem, TimelineItemContent,
+    EncryptedMessage, EventSendState, EventTimelineItem, MsgLikeKind, Timeline, TimelineBuilder,
+    TimelineDetails, TimelineItem, TimelineItemContent,
 };
 
 use crate::frb_generated::StreamSink;
@@ -18,6 +19,8 @@ use crate::{client_holder, sync_holder, timeline_holder};
 pub enum MessageKind {
     Text,
     Encrypted,
+    EncryptedKeysNeeded,
+    EncryptedUnavailable,
     Other,
 }
 
@@ -212,10 +215,24 @@ fn describe(event: &EventTimelineItem) -> Option<(MessageKind, String)> {
             }
             _ => (MessageKind::Other, message.body().to_owned()),
         },
-        MsgLikeKind::UnableToDecrypt(_) => (MessageKind::Encrypted, String::new()),
+        MsgLikeKind::UnableToDecrypt(message) => (undecryptable_kind(message), String::new()),
         MsgLikeKind::Redacted => (MessageKind::Other, "Mensagem apagada".to_owned()),
         _ => (MessageKind::Other, "Mensagem não suportada".to_owned()),
     })
+}
+
+fn undecryptable_kind(message: &EncryptedMessage) -> MessageKind {
+    let EncryptedMessage::MegolmV1AesSha2 { cause, .. } = message else {
+        return MessageKind::Encrypted;
+    };
+    match cause {
+        UtdCause::HistoricalMessageAndBackupIsDisabled
+        | UtdCause::HistoricalMessageAndDeviceIsUnverified => MessageKind::EncryptedKeysNeeded,
+        UtdCause::SentBeforeWeJoined
+        | UtdCause::WithheldForUnverifiedOrInsecureDevice
+        | UtdCause::WithheldBySender => MessageKind::EncryptedUnavailable,
+        _ => MessageKind::Encrypted,
+    }
 }
 
 fn sender_name(event: &EventTimelineItem) -> String {
@@ -236,6 +253,60 @@ fn delivery_of(event: &EventTimelineItem) -> DeliveryState {
         None | Some(EventSendState::Sent { .. }) => DeliveryState::Sent,
         Some(EventSendState::NotSentYet { .. }) => DeliveryState::Sending,
         Some(EventSendState::SendingFailed { .. }) => DeliveryState::Failed,
+    }
+}
+
+#[cfg(test)]
+mod classificacao_tests {
+    use super::*;
+
+    #[allow(deprecated)]
+    fn megolm(cause: UtdCause) -> EncryptedMessage {
+        EncryptedMessage::MegolmV1AesSha2 {
+            sender_key: None,
+            device_id: None,
+            session_id: "sessao".into(),
+            cause,
+        }
+    }
+
+    #[test]
+    fn mensagem_historica_pede_as_chaves() {
+        for cause in [
+            UtdCause::HistoricalMessageAndBackupIsDisabled,
+            UtdCause::HistoricalMessageAndDeviceIsUnverified,
+        ] {
+            assert_eq!(
+                undecryptable_kind(&megolm(cause)),
+                MessageKind::EncryptedKeysNeeded
+            );
+        }
+    }
+
+    #[test]
+    fn mensagem_sem_chave_para_este_dispositivo_fica_indisponivel() {
+        for cause in [
+            UtdCause::SentBeforeWeJoined,
+            UtdCause::WithheldBySender,
+            UtdCause::WithheldForUnverifiedOrInsecureDevice,
+        ] {
+            assert_eq!(
+                undecryptable_kind(&megolm(cause)),
+                MessageKind::EncryptedUnavailable
+            );
+        }
+    }
+
+    #[test]
+    fn causa_desconhecida_fica_aguardando_a_chave() {
+        assert_eq!(
+            undecryptable_kind(&megolm(UtdCause::Unknown)),
+            MessageKind::Encrypted
+        );
+        assert_eq!(
+            undecryptable_kind(&EncryptedMessage::Unknown),
+            MessageKind::Encrypted
+        );
     }
 }
 

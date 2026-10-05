@@ -3103,6 +3103,7 @@ dependencies = [
  "flutter_rust_bridge",
  "futures-util",
  "matrix-sdk",
+ "matrix-sdk-crypto",
  "matrix-sdk-ui",
  "thiserror 2.0.21",
  "tokio",

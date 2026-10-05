@@ -1,9 +1,6 @@
 use eyeball_im::Vector;
 use flutter_rust_bridge::frb;
 use futures_util::{pin_mut, StreamExt};
-use matrix_sdk::ruma::api::client::room::create_room::v3::{
-    Request as CreateRoomRequest, RoomPreset,
-};
 use matrix_sdk::ruma::events::direct::OwnedDirectUserIdentifier;
 use matrix_sdk::ruma::events::room::member::MembershipState;
 use matrix_sdk::ruma::{RoomId, UserId};
@@ -63,12 +60,8 @@ pub async fn create_conversation(user_id: String) -> Result<String, Conversation
         }
     }
 
-    let mut request = CreateRoomRequest::new();
-    request.invite = vec![user_id];
-    request.is_direct = true;
-    request.preset = Some(RoomPreset::TrustedPrivateChat);
     let room = client
-        .create_room(request)
+        .create_dm(&user_id)
         .await
         .map_err(|_| ConversationError::Failed)?;
     Ok(room.room_id().to_string())
@@ -283,6 +276,19 @@ mod tests {
         let again = create_conversation("@bob:localhost".into()).await.unwrap();
         println!("conversa com o bob: {with_bob} (repetida: {again})");
         assert_eq!(with_bob, again, "não deveria duplicar a conversa");
+        let created = client_holder::get()
+            .await
+            .unwrap()
+            .get_room(&RoomId::parse(&with_bob).unwrap())
+            .unwrap();
+        assert!(
+            created
+                .latest_encryption_state()
+                .await
+                .unwrap()
+                .is_encrypted(),
+            "a conversa criada deveria ser criptografada"
+        );
         assert!(
             wait_for_room(&with_bob).await,
             "a conversa deveria aparecer na lista"

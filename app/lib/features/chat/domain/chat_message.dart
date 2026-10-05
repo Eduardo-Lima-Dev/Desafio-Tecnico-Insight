@@ -1,6 +1,17 @@
 import 'package:flutter/foundation.dart';
 
-enum MessageKind { text, encrypted, other }
+enum MessageKind {
+  text,
+  encrypted,
+  encryptedKeysNeeded,
+  encryptedUnavailable,
+  other;
+
+  bool get isUndecryptable =>
+      this == encrypted ||
+      this == encryptedKeysNeeded ||
+      this == encryptedUnavailable;
+}
 
 enum DeliveryState { sending, sent, failed }
 

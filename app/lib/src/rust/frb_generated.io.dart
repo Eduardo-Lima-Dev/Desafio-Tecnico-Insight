@@ -5,6 +5,7 @@
 
 import 'api/chat.dart';
 import 'api/conversations.dart';
+import 'api/encryption.dart';
 import 'api/rooms.dart';
 import 'api/session.dart';
 import 'dart:async';
@@ -39,6 +40,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  RustStreamSink<RecoveryStatus> dco_decode_StreamSink_recovery_status_Sse(
+    dynamic raw,
+  );
+
+  @protected
   RustStreamSink<SyncStatus> dco_decode_StreamSink_sync_status_Sse(dynamic raw);
 
   @protected
@@ -69,6 +75,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   DeliveryState dco_decode_delivery_state(dynamic raw);
 
   @protected
+  EncryptionError dco_decode_encryption_error(dynamic raw);
+
+  @protected
   int dco_decode_i_32(dynamic raw);
 
   @protected
@@ -94,6 +103,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   BigInt? dco_decode_opt_box_autoadd_u_64(dynamic raw);
+
+  @protected
+  RecoveryStatus dco_decode_recovery_status(dynamic raw);
 
   @protected
   RoomSummary dco_decode_room_summary(dynamic raw);
@@ -137,6 +149,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  RustStreamSink<RecoveryStatus> sse_decode_StreamSink_recovery_status_Sse(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   RustStreamSink<SyncStatus> sse_decode_StreamSink_sync_status_Sse(
     SseDeserializer deserializer,
   );
@@ -169,6 +186,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   DeliveryState sse_decode_delivery_state(SseDeserializer deserializer);
 
   @protected
+  EncryptionError sse_decode_encryption_error(SseDeserializer deserializer);
+
+  @protected
   int sse_decode_i_32(SseDeserializer deserializer);
 
   @protected
@@ -196,6 +216,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   BigInt? sse_decode_opt_box_autoadd_u_64(SseDeserializer deserializer);
+
+  @protected
+  RecoveryStatus sse_decode_recovery_status(SseDeserializer deserializer);
 
   @protected
   RoomSummary sse_decode_room_summary(SseDeserializer deserializer);
@@ -246,6 +269,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_StreamSink_recovery_status_Sse(
+    RustStreamSink<RecoveryStatus> self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_StreamSink_sync_status_Sse(
     RustStreamSink<SyncStatus> self,
     SseSerializer serializer,
@@ -285,6 +314,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_delivery_state(DeliveryState self, SseSerializer serializer);
 
   @protected
+  void sse_encode_encryption_error(
+    EncryptionError self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_i_32(int self, SseSerializer serializer);
 
   @protected
@@ -322,6 +357,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_opt_box_autoadd_u_64(BigInt? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_recovery_status(
+    RecoveryStatus self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_room_summary(RoomSummary self, SseSerializer serializer);

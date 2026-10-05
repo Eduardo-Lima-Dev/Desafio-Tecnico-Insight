@@ -2,6 +2,7 @@ use std::fmt;
 use std::path::PathBuf;
 
 use matrix_sdk::authentication::matrix::MatrixSession;
+use matrix_sdk::encryption::{BackupDownloadStrategy, EncryptionSettings};
 use matrix_sdk::ruma::api::error::ErrorKind;
 use matrix_sdk::store::RoomLoadSettings;
 use matrix_sdk::{Client, ClientBuildError, SessionMeta, SessionTokens};
@@ -56,6 +57,11 @@ async fn build_client(
     Client::builder()
         .homeserver_url(homeserver_url)
         .sqlite_store(PathBuf::from(data_dir), Some(passphrase))
+        .with_encryption_settings(EncryptionSettings {
+            auto_enable_cross_signing: true,
+            backup_download_strategy: BackupDownloadStrategy::OneShot,
+            auto_enable_backups: false,
+        })
         .build()
         .await
         .map_err(map_build_error)

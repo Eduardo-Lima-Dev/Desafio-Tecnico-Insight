@@ -1,6 +1,7 @@
 import 'package:app/features/conversations/domain/conversation_failure.dart';
 import 'package:app/features/conversations/state/conversations_providers.dart';
 import 'package:app/features/conversations/ui/conversation_failure_message.dart';
+import 'package:app/shared/ui/dialog_buttons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -73,19 +74,14 @@ class _NewConversationDialogState extends ConsumerState<NewConversationDialog> {
         ),
       ),
       actions: [
-        TextButton(
+        DialogCancelButton(
+          label: 'Cancelar',
           onPressed: loading ? null : () => Navigator.of(context).pop(),
-          child: const Text('Cancelar'),
         ),
-        FilledButton(
+        DialogConfirmButton(
+          label: 'Criar',
+          loading: loading,
           onPressed: loading ? null : _submit,
-          child: loading
-              ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Text('Criar'),
         ),
       ],
     );

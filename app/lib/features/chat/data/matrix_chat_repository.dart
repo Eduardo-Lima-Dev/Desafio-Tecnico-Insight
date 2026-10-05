@@ -64,6 +64,8 @@ class MatrixChatRepository implements ChatRepository {
     kind: switch (message.kind) {
       rust.MessageKind.text => MessageKind.text,
       rust.MessageKind.encrypted => MessageKind.encrypted,
+      rust.MessageKind.encryptedKeysNeeded => MessageKind.encryptedKeysNeeded,
+      rust.MessageKind.encryptedUnavailable => MessageKind.encryptedUnavailable,
       rust.MessageKind.other => MessageKind.other,
     },
     delivery: switch (message.delivery) {

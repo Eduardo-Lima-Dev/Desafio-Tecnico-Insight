@@ -3,6 +3,9 @@ import 'dart:async';
 import 'package:app/features/chat/state/chat_providers.dart';
 import 'package:app/features/chat/ui/message_composer.dart';
 import 'package:app/features/chat/ui/message_list.dart';
+import 'package:app/features/encryption/domain/recovery_status.dart';
+import 'package:app/features/encryption/state/encryption_providers.dart';
+import 'package:app/features/encryption/ui/recovery_banner.dart';
 import 'package:app/features/rooms/state/rooms_providers.dart';
 import 'package:app/features/rooms/ui/conversation_header.dart';
 import 'package:app/features/session/domain/session_failure.dart';
@@ -33,11 +36,16 @@ class ConversationPanel extends ConsumerWidget {
     }
 
     final messages = ref.watch(chatMessagesProvider(room.id));
+    final needsRecovery =
+        ref.watch(recoveryStatusProvider).value == RecoveryStatus.incomplete &&
+        (messages.value?.any((message) => message.kind.isUndecryptable) ??
+            false);
 
     return Column(
       children: [
         ConversationHeader(room: room, onBack: onBack),
         const Divider(height: 1),
+        if (needsRecovery) const RecoveryBanner(),
         Expanded(
           child: messages.when(
             loading: () => const MessageListSkeleton(),

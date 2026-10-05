@@ -7,6 +7,8 @@ import 'package:app/features/conversations/data/conversations_repository.dart';
 import 'package:app/features/conversations/domain/conversation_failure.dart';
 import 'package:app/features/conversations/domain/room_invite.dart';
 import 'package:app/features/conversations/state/conversations_providers.dart';
+import 'package:app/features/encryption/domain/recovery_status.dart';
+import 'package:app/features/encryption/state/encryption_providers.dart';
 import 'package:app/features/rooms/data/rooms_repository.dart';
 import 'package:app/features/rooms/domain/room_summary.dart';
 import 'package:app/features/rooms/domain/sync_status.dart';
@@ -23,6 +25,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../../encryption/fake_encryption_repository.dart';
 
 const _alice = Session(userId: '@alice:localhost', homeserverUrl: 'http://x');
 
@@ -154,6 +158,7 @@ Future<void> _pump(
   _FakeSessionRepository? session,
   _FakeChatRepository? chat,
   _FakeConversationsRepository? conversations,
+  FakeEncryptionRepository? encryption,
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
@@ -171,6 +176,9 @@ Future<void> _pump(
         chatRepositoryProvider.overrideWithValue(chat ?? _FakeChatRepository()),
         conversationsRepositoryProvider.overrideWithValue(
           conversations ?? _FakeConversationsRepository(),
+        ),
+        encryptionRepositoryProvider.overrideWithValue(
+          encryption ?? FakeEncryptionRepository(),
         ),
       ],
       child: const MaterialApp(home: HomePage(session: _alice)),
@@ -495,7 +503,99 @@ void main() {
     await tester.tap(find.text('Alice e Bob'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Mensagem criptografada'), findsOneWidget);
+    expect(
+      find.text('Aguardando a chave para ler esta mensagem...'),
+      findsOneWidget,
+    );
+    expect(find.text('Recuperar chaves'), findsNothing);
+  });
+
+  group('criptografia', () {
+    final historical = {
+      '!a': [
+        ChatMessage(
+          id: '1',
+          senderId: '@bob:localhost',
+          senderName: 'Bob',
+          text: '',
+          sentAt: DateTime(2020, 1, 2),
+          isOwn: false,
+          kind: MessageKind.encryptedKeysNeeded,
+        ),
+      ],
+    };
+
+    testWidgets('chaves incompletas e mensagem ilegível mostram o aviso', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        size: wide,
+        chat: _FakeChatRepository(messages: historical),
+        encryption: FakeEncryptionRepository(status: RecoveryStatus.incomplete),
+      );
+
+      await tester.tap(find.text('Alice e Bob'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Recuperar chaves'), findsOneWidget);
+
+      await tester.tap(find.text('Recuperar chaves'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Recuperar mensagens'), findsOneWidget);
+    });
+
+    testWidgets('com o backup ativo o aviso não aparece', (tester) async {
+      await _pump(
+        tester,
+        size: wide,
+        chat: _FakeChatRepository(messages: historical),
+        encryption: FakeEncryptionRepository(),
+      );
+
+      await tester.tap(find.text('Alice e Bob'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Recuperar chaves'), findsNothing);
+    });
+
+    testWidgets('o botão de chave no rodapé abre o backup', (tester) async {
+      await _pump(
+        tester,
+        size: wide,
+        encryption: FakeEncryptionRepository(status: RecoveryStatus.disabled),
+      );
+
+      await tester.tap(find.byTooltip('Backup das mensagens'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Ativar backup'), findsOneWidget);
+    });
+
+    testWidgets('sair sem backup avisa sobre as mensagens criptografadas', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        size: wide,
+        encryption: FakeEncryptionRepository(status: RecoveryStatus.disabled),
+      );
+
+      await tester.tap(find.byTooltip('Sair'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Sem o backup das chaves'), findsOneWidget);
+    });
+
+    testWidgets('sair com backup ativo não traz o aviso extra', (tester) async {
+      await _pump(tester, size: wide);
+
+      await tester.tap(find.byTooltip('Sair'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Sem o backup das chaves'), findsNothing);
+    });
   });
 
   testWidgets('falha ao abrir a conversa mostra erro com nova tentativa', (

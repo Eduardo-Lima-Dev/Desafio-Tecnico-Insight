@@ -11,6 +11,7 @@ eyeball-im = "0.9.1"
 flutter_rust_bridge = "=2.13.0"
 futures-util = "0.3"
 matrix-sdk = { version = "0.19.1", features = ["bundled-sqlite"] }
+matrix-sdk-crypto = "0.19.1"
 matrix-sdk-ui = "0.19.1"
 thiserror = "2"
 tokio = { version = "1.53.2", features = ["macros", "rt-multi-thread", "sync", "time"] }

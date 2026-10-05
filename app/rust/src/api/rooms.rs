@@ -206,16 +206,20 @@ fn last_message_text(value: &LatestEventValue) -> Option<String> {
     let LatestEventValue::Remote(event) = value else {
         return None;
     };
-    let AnySyncTimelineEvent::MessageLike(AnySyncMessageLikeEvent::RoomMessage(message)) =
-        event.raw().deserialize().ok()?
-    else {
+    let AnySyncTimelineEvent::MessageLike(event) = event.raw().deserialize().ok()? else {
         return None;
     };
-    let message = message.as_original()?;
-    match &message.content.msgtype {
-        MessageType::Text(text) => Some(text.body.clone()),
-        MessageType::Notice(notice) => Some(notice.body.clone()),
-        MessageType::Emote(emote) => Some(emote.body.clone()),
-        _ => Some("Mensagem".to_owned()),
+    match event {
+        AnySyncMessageLikeEvent::RoomMessage(message) => {
+            let message = message.as_original()?;
+            match &message.content.msgtype {
+                MessageType::Text(text) => Some(text.body.clone()),
+                MessageType::Notice(notice) => Some(notice.body.clone()),
+                MessageType::Emote(emote) => Some(emote.body.clone()),
+                _ => Some("Mensagem".to_owned()),
+            }
+        }
+        AnySyncMessageLikeEvent::RoomEncrypted(_) => Some("Mensagem criptografada".to_owned()),
+        _ => None,
     }
 }

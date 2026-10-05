@@ -162,9 +162,9 @@ class _Content extends StatelessWidget {
   Widget build(BuildContext context) {
     final style = TextStyle(color: color);
 
-    if (message.kind == MessageKind.encrypted) {
+    if (message.kind.isUndecryptable) {
       return Text(
-        'Mensagem criptografada',
+        _undecryptableText(message.kind),
         style: style.copyWith(fontStyle: FontStyle.italic),
       );
     }
@@ -172,6 +172,14 @@ class _Content extends StatelessWidget {
     return SelectableText(message.text, style: style);
   }
 }
+
+String _undecryptableText(MessageKind kind) => switch (kind) {
+  MessageKind.encryptedKeysNeeded =>
+    'Mensagem criptografada anterior a este dispositivo.',
+  MessageKind.encryptedUnavailable =>
+    'Não foi possível decifrar esta mensagem.',
+  _ => 'Aguardando a chave para ler esta mensagem...',
+};
 
 class _DeliveryIcon extends StatelessWidget {
   const _DeliveryIcon({

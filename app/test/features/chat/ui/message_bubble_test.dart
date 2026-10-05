@@ -72,11 +72,36 @@ void main() {
     expect(find.byIcon(Icons.done), findsOneWidget);
   });
 
-  testWidgets('mensagem criptografada mostra o aviso', (tester) async {
+  testWidgets('mensagem criptografada aguarda a chave', (tester) async {
     await _pump(tester, _message(kind: MessageKind.encrypted));
 
-    expect(find.text('Mensagem criptografada'), findsOneWidget);
+    expect(
+      find.text('Aguardando a chave para ler esta mensagem...'),
+      findsOneWidget,
+    );
     expect(find.text('Olá, tudo bem?'), findsNothing);
+  });
+
+  testWidgets('mensagem anterior ao dispositivo explica o motivo', (
+    tester,
+  ) async {
+    await _pump(tester, _message(kind: MessageKind.encryptedKeysNeeded));
+
+    expect(
+      find.text('Mensagem criptografada anterior a este dispositivo.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('mensagem sem chave disponível avisa que não dá para ler', (
+    tester,
+  ) async {
+    await _pump(tester, _message(kind: MessageKind.encryptedUnavailable));
+
+    expect(
+      find.text('Não foi possível decifrar esta mensagem.'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('o texto é exibido como texto puro, sem interpretar HTML', (
