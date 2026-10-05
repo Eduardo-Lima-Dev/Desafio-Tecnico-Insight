@@ -209,12 +209,16 @@ docker compose -p testes down -v
 
 ## Executáveis prontos (Releases)
 
-Os executáveis são gerados pelo GitHub Actions ([DT-009](docs/PRD.md#dt-009)). Ao enviar uma tag `v*`, o workflow Release publica os três na aba Releases:
+Os executáveis são gerados pelo GitHub Actions ([DT-009](docs/PRD.md#dt-009)). Quando o CI passa na `main`, o workflow Release calcula a versão pelos commits, gera os três executáveis e publica a Release, sem nenhum passo manual. Só contam os commits que mexem em `app/`, no padrão Conventional Commits:
 
-```bash
-git tag vX.Y.Z           # use a próxima versão, por exemplo v1.0.2
-git push origin vX.Y.Z
-```
+| Commit | Versão |
+| ------ | ------ |
+| `feat` | minor (1.0.1 para 1.1.0) |
+| `fix` ou `perf` | patch (1.0.1 para 1.0.2) |
+| `tipo!` ou `BREAKING CHANGE` | major (1.0.1 para 2.0.0) |
+| `docs`, `chore`, `ci`, `test`, `refactor` | sem Release |
+
+Para publicar sem esperar um push, rode o workflow Release na aba Actions com "Publicar" marcado.
 
 | Sistema | Arquivo | Como abrir |
 | ------- | ------- | ---------- |

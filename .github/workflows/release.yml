@@ -1,29 +1,93 @@
 name: Release
 
-# Gera os executáveis de Linux, Windows e macOS.
-# - Ao enviar uma tag `v*` (ex.: v1.0.0), publica uma Release com os três arquivos.
-# - Em execução manual, só gera os arquivos como artefatos do workflow.
+# Depois que o CI passa na main, calcula a versão pelos commits (Conventional
+# Commits, regras em .github/scripts/next-version.sh), gera os executáveis de
+# Linux, Windows e macOS e publica a Release. Sem commit que gere versão
+# (docs, chore, ci...), nada é gerado.
+# Execução manual: gera os arquivos como artefatos; com "publicar" marcado,
+# publica a Release.
 on:
-  push:
-    tags: ['v*']
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
+    inputs:
+      publish:
+        description: Publicar a Release (a versão sai dos commits desde a última tag)
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 env:
   FLUTTER_VERSION: 3.47.6
-  VERSION: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'dev' }}
 
 jobs:
+  version:
+    name: Calcular a versão
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.sha.outputs.sha }}
+      version: ${{ steps.next.outputs.version }}
+      semver: ${{ steps.next.outputs.semver }}
+      previous: ${{ steps.next.outputs.previous }}
+      build: ${{ steps.next.outputs.build }}
+      release: ${{ steps.next.outputs.release }}
+    steps:
+      - name: Commit a publicar
+        id: sha
+        run: echo "sha=${{ github.event.workflow_run.head_sha || github.sha }}" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.sha.outputs.sha }}
+          fetch-depth: 0
+      - name: Próxima versão
+        id: next
+        env:
+          PUBLISH: ${{ github.event_name == 'workflow_run' || inputs.publish }}
+        run: |
+          eval "$(bash .github/scripts/next-version.sh)"
+          release=false
+          version=dev
+          if [ "$bump" != none ] && [ "$PUBLISH" = true ]; then
+            release=true
+            version=$next
+          fi
+          build=$release
+          [ "$GITHUB_EVENT_NAME" = workflow_dispatch ] && build=true
+          {
+            echo "version=$version"
+            echo "semver=${next#v}"
+            echo "previous=$previous"
+            echo "release=$release"
+            echo "build=$build"
+          } >> "$GITHUB_OUTPUT"
+          echo "Versão anterior: ${previous:-nenhuma}. Mudança: $bump. Próxima: $next. Publicar: $release." >> "$GITHUB_STEP_SUMMARY"
+
   linux:
     name: Linux (AppImage)
     runs-on: ubuntu-22.04
+    needs: version
+    if: needs.version.outputs.build == 'true'
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
     defaults:
       run:
         working-directory: app
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.sha }}
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
@@ -46,7 +110,7 @@ jobs:
           restore-keys: |
             rust-${{ runner.os }}-release-
       - run: flutter pub get
-      - run: flutter build linux --release
+      - run: flutter build linux --release --build-name=${{ needs.version.outputs.semver }} --build-number=${{ github.run_number }}
       - name: Montar o AppImage
         run: |
           mkdir -p AppDir/usr/bin dist
@@ -81,11 +145,17 @@ jobs:
   windows:
     name: Windows (zip)
     runs-on: windows-latest
+    needs: version
+    if: needs.version.outputs.build == 'true'
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
     defaults:
       run:
         working-directory: app
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.sha }}
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
@@ -103,7 +173,7 @@ jobs:
           restore-keys: |
             rust-${{ runner.os }}-release-
       - run: flutter pub get
-      - run: flutter build windows --release
+      - run: flutter build windows --release --build-name=${{ needs.version.outputs.semver }} --build-number=${{ github.run_number }}
       - name: Empacotar
         shell: pwsh
         run: |
@@ -122,11 +192,17 @@ jobs:
   macos:
     name: macOS (dmg)
     runs-on: macos-latest
+    needs: version
+    if: needs.version.outputs.build == 'true'
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
     defaults:
       run:
         working-directory: app
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.sha }}
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
@@ -144,7 +220,7 @@ jobs:
           restore-keys: |
             rust-${{ runner.os }}-release-
       - run: flutter pub get
-      - run: flutter build macos --release
+      - run: flutter build macos --release --build-name=${{ needs.version.outputs.semver }} --build-number=${{ github.run_number }}
       - name: Criar o dmg
         run: |
           mkdir -p dist/dmg
@@ -160,21 +236,31 @@ jobs:
 
   release:
     name: Publicar a Release
-    if: startsWith(github.ref, 'refs/tags/')
-    needs: [linux, windows, macos]
+    needs: [version, linux, windows, macos]
+    if: needs.version.outputs.release == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+      PREVIOUS: ${{ needs.version.outputs.previous }}
+      SHA: ${{ needs.version.outputs.sha }}
+      GH_TOKEN: ${{ github.token }}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.sha }}
+          fetch-depth: 0
       - uses: actions/download-artifact@v4
         with:
           path: dist
           merge-multiple: true
+      - name: Notas da Release
+        run: bash .github/scripts/release-notes.sh "$PREVIOUS" "$VERSION" > notes.md
       - name: Criar a Release
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "$VERSION" dist/* \
             --repo "$GITHUB_REPOSITORY" \
+            --target "$SHA" \
             --title "Insight Matrix $VERSION" \
-            --generate-notes
+            --notes-file notes.md
