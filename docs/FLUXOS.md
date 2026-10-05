@@ -1,15 +1,6 @@
 # Fluxos do sistema
 
-Este documento reúne os diagramas do cliente de mensageria, organizados pelo **tipo de diagrama**. Eles descrevem o comportamento **atual** do aplicativo e acompanham os requisitos do [PRD](PRD.md) (RF-xx).
-
-Só ficaram aqui os fluxos que mostram algo **não óbvio**: decisões, ramos de erro, comportamento assíncrono ou mais de um ator. O que é simples de deduzir olhando a tela (por exemplo, o logout, o layout da tela principal, o botão de mostrar a senha e as ações de convite) está descrito nos requisitos do PRD.
-
-## Índice
-
-1. [Diagramas de atividade](#1-diagramas-de-atividade): o passo a passo de cada ação do usuário.
-2. [Diagrama de estados](#2-diagrama-de-estados): os estados da sincronização.
-3. [Diagramas de sequência](#3-diagramas-de-sequência): quem conversa com quem, e em que ordem.
-4. [Diagrama de componentes](#4-diagrama-de-componentes): as camadas da aplicação.
+Diagramas do cliente, organizados pelo tipo de diagrama, com o comportamento atual e ligados aos requisitos do [PRD](PRD.md). Só entram os fluxos que mostram algo não óbvio (decisões, ramos de erro, comportamento assíncrono ou mais de um ator); o resto está descrito nos requisitos.
 
 ## Legenda dos participantes
 
@@ -26,9 +17,9 @@ Só ficaram aqui os fluxos que mostram algo **não óbvio**: decisões, ramos de
 
 ### 1.1. Inicialização e restauração da sessão
 
-Requisitos: RF-04, RF-05.
+Requisitos: [RF-04](PRD.md#rf-04), [RF-05](PRD.md#rf-05).
 
-A restauração acontece no Rust, sem esperar a resposta de uma validação separada. Um token que o servidor deixou de aceitar também pode ser descoberto depois, já na tela principal (veja 1.3).
+A restauração é local, sem validar o token no servidor. Um token recusado só aparece depois, já na tela principal (veja 1.3).
 
 ```mermaid
 flowchart LR
@@ -43,7 +34,7 @@ flowchart LR
 
 ### 1.2. Login
 
-Requisitos: RF-01, RF-02, RF-03, RF-20, RF-21.
+Requisitos: [RF-01](PRD.md#rf-01), [RF-02](PRD.md#rf-02), [RF-03](PRD.md#rf-03), [RF-20](PRD.md#rf-20), [RF-21](PRD.md#rf-21).
 
 ```mermaid
 flowchart LR
@@ -61,13 +52,11 @@ flowchart LR
     V --> P([Principal])
 ```
 
-Regras da URL: o endereço precisa ser `https`, exceto para `localhost`, `127.0.0.1` e `::1`, onde `http` é aceito (desenvolvimento). Sem esquema, o app completa (`https`, ou `http` para localhost). A senha começa oculta e o ícone de olho no campo a mostra ou oculta; ela nunca é guardada: ao enviar, o campo é limpo e volta a ficar oculto. Com a caixa "Salvar servidor" marcada, o servidor é lembrado; desmarcada, o servidor salvo é esquecido.
+O endereço precisa ser `https`, exceto para `localhost`. Sem esquema, o app completa.
 
 ### 1.3. Sessão expirada durante o uso
 
-Requisito: RF-05.
-
-Quando o servidor recusa o token, o app executa um logout silencioso: tenta encerrar a sessão, apaga os dados locais mesmo que o servidor não responda, registra o aviso e volta ao login.
+Requisito: [RF-05](PRD.md#rf-05).
 
 ```mermaid
 flowchart LR
@@ -80,7 +69,7 @@ flowchart LR
 
 ### 1.4. Enviar mensagem
 
-Requisitos: RF-13, RF-14, RF-15.
+Requisitos: [RF-13](PRD.md#rf-13), [RF-14](PRD.md#rf-14), [RF-15](PRD.md#rf-15).
 
 ```mermaid
 flowchart LR
@@ -96,11 +85,9 @@ flowchart LR
     H -->|"Toca no ícone"| E
 ```
 
-O botão de enviar fica desabilitado enquanto o campo está vazio ou só tem espaços. Shift+Enter não envia: serve para quebrar a linha.
-
 ### 1.5. Carregar o histórico
 
-Requisito: RF-17.
+Requisito: [RF-17](PRD.md#rf-17).
 
 ```mermaid
 flowchart LR
@@ -114,11 +101,11 @@ flowchart LR
     G -->|Toca| C
 ```
 
-A posição de leitura não pula: as mensagens antigas entram acima do que o usuário está vendo. Uma sala sem nenhuma mensagem não dispara carregamento.
+A posição de leitura não pula: as mensagens antigas entram acima do que o usuário está vendo.
 
 ### 1.6. Nova conversa
 
-Requisito: RF-26.
+Requisito: [RF-26](PRD.md#rf-26).
 
 ```mermaid
 flowchart LR
@@ -135,11 +122,11 @@ flowchart LR
     H --> R2(["Abre a nova conversa"])
 ```
 
-O identificador aceita `@bob:localhost`, `bob:localhost`, `@bob` ou só `bob` (o app completa com o servidor do usuário logado). A conversa criada é direta (1:1) e **criptografada**. O servidor aceita convidar usuários que não existem e deixaria uma sala órfã, por isso o app consulta o perfil antes de criar.
+O app consulta o perfil antes de criar, porque o servidor aceita convidar usuários que não existem e deixaria uma sala órfã.
 
 ### 1.7. Backup e recuperação das mensagens
 
-Requisito: RF-33.
+Requisito: [RF-33](PRD.md#rf-33).
 
 ```mermaid
 flowchart LR
@@ -155,7 +142,7 @@ flowchart LR
     B -- Ativo --> R3(["Informa que o backup está ativo"])
 ```
 
-"Incompleto" quer dizer que a conta já tem backup, mas este dispositivo ainda não tem as chaves. "Desativado" quer dizer que a conta não tem backup. A chave de recuperação nunca é guardada pelo app: ela só aparece na tela quando o backup é ativado, ou é digitada pelo usuário.
+"Incompleto" quer dizer que a conta já tem backup, mas este dispositivo ainda não tem as chaves. "Desativado" quer dizer que a conta não tem backup.
 
 ---
 
@@ -163,7 +150,7 @@ flowchart LR
 
 ### 2.1. Sincronização
 
-Requisitos: RF-09, RF-19.
+Requisitos: [RF-09](PRD.md#rf-09), [RF-19](PRD.md#rf-19).
 
 ```mermaid
 stateDiagram-v2
@@ -181,7 +168,7 @@ stateDiagram-v2
     SessaoExpirada --> [*]: logout e login com aviso
 ```
 
-No estado **Offline**, o SDK tenta reconectar sozinho. Para distinguir "sem rede" de "token recusado", o Rust consulta o servidor (`whoami`) ao entrar em Offline. Em **Offline**, o aviso "Sem conexão. Tentando reconectar..." aparece no topo da tela principal. Em **Falha**, o aviso mostra "Não foi possível sincronizar." com o botão **Tentar de novo**, que reinicia a sincronização (volta a Conectando).
+No estado Offline, o SDK tenta reconectar sozinho. Para distinguir "sem rede" de "token recusado", o Rust consulta o servidor (`whoami`) ao entrar em Offline.
 
 ---
 
@@ -189,7 +176,7 @@ No estado **Offline**, o SDK tenta reconectar sozinho. Para distinguir "sem rede
 
 ### 3.1. Login
 
-Requisitos: RF-01 a RF-03.
+Requisitos: [RF-01](PRD.md#rf-01) a [RF-03](PRD.md#rf-03).
 
 ```mermaid
 sequenceDiagram
@@ -212,7 +199,7 @@ sequenceDiagram
 
 ### 3.2. Abrir uma sala e receber mensagens em tempo real
 
-Requisitos: RF-09, RF-10, RF-12, RF-16, RF-19.
+Requisitos: [RF-09](PRD.md#rf-09), [RF-10](PRD.md#rf-10), [RF-12](PRD.md#rf-12), [RF-16](PRD.md#rf-16), [RF-19](PRD.md#rf-19).
 
 ```mermaid
 sequenceDiagram
@@ -237,7 +224,7 @@ sequenceDiagram
 
 ### 3.3. Enviar e reenviar uma mensagem
 
-Requisitos: RF-13, RF-14, RF-15.
+Requisitos: [RF-13](PRD.md#rf-13), [RF-14](PRD.md#rf-14), [RF-15](PRD.md#rf-15).
 
 ```mermaid
 sequenceDiagram
@@ -264,7 +251,7 @@ sequenceDiagram
 
 ### 3.4. Nova conversa e convite
 
-Requisitos: RF-26, RF-27.
+Requisitos: [RF-26](PRD.md#rf-26), [RF-27](PRD.md#rf-27).
 
 ```mermaid
 sequenceDiagram
