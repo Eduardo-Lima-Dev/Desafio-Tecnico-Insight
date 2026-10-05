@@ -24,25 +24,11 @@ Só ficaram aqui os fluxos que mostram algo **não óbvio**: decisões, ramos de
 
 ## 1. Diagramas de atividade
 
-### 1.1. Navegação entre telas
-
-Requisitos: RF-01, RF-04, RF-05, RF-06.
-
-```mermaid
-flowchart LR
-    A([Abre o app]) --> B[Splash]
-    B -->|sem sessão| C[Login]
-    B -->|sessão restaurada| D[Principal]
-    C -->|login ok| D
-    D -->|logout| C
-    D -->|sessão expirada| C
-```
-
-### 1.2. Inicialização e restauração da sessão
+### 1.1. Inicialização e restauração da sessão
 
 Requisitos: RF-04, RF-05.
 
-A restauração acontece no Rust, sem esperar a resposta de uma validação separada. Um token que o servidor deixou de aceitar também pode ser descoberto depois, já na tela principal (veja 1.4).
+A restauração acontece no Rust, sem esperar a resposta de uma validação separada. Um token que o servidor deixou de aceitar também pode ser descoberto depois, já na tela principal (veja 1.3).
 
 ```mermaid
 flowchart LR
@@ -55,7 +41,7 @@ flowchart LR
     D -- "Outra falha" --> F["Mantém os dados salvos"] --> L
 ```
 
-### 1.3. Login
+### 1.2. Login
 
 Requisitos: RF-01, RF-02, RF-03, RF-20, RF-21.
 
@@ -77,7 +63,7 @@ flowchart LR
 
 Regras da URL: o endereço precisa ser `https`, exceto para `localhost`, `127.0.0.1` e `::1`, onde `http` é aceito (desenvolvimento). Sem esquema, o app completa (`https`, ou `http` para localhost). A senha começa oculta e o ícone de olho no campo a mostra ou oculta; ela nunca é guardada: ao enviar, o campo é limpo e volta a ficar oculto. Com a caixa "Salvar servidor" marcada, o servidor é lembrado; desmarcada, o servidor salvo é esquecido.
 
-### 1.4. Sessão expirada durante o uso
+### 1.3. Sessão expirada durante o uso
 
 Requisito: RF-05.
 
@@ -92,7 +78,7 @@ flowchart LR
     D --> L(["Login com o aviso Sua sessão expirou"])
 ```
 
-### 1.5. Enviar mensagem
+### 1.4. Enviar mensagem
 
 Requisitos: RF-13, RF-14, RF-15.
 
@@ -112,7 +98,7 @@ flowchart LR
 
 O botão de enviar fica desabilitado enquanto o campo está vazio ou só tem espaços. Shift+Enter não envia: serve para quebrar a linha.
 
-### 1.6. Carregar o histórico
+### 1.5. Carregar o histórico
 
 Requisito: RF-17.
 
@@ -130,7 +116,7 @@ flowchart LR
 
 A posição de leitura não pula: as mensagens antigas entram acima do que o usuário está vendo. Uma sala sem nenhuma mensagem não dispara carregamento.
 
-### 1.7. Nova conversa
+### 1.6. Nova conversa
 
 Requisito: RF-26.
 

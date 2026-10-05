@@ -1,5 +1,11 @@
 # Cliente de mensageria desktop com Matrix
 
+<p align="center">
+  <img src="app/assets/icon/app_icon.png" alt="Logotipo do aplicativo: um balão de conversa ligado a três círculos conectados" width="160">
+  <br>
+  <sub><i>Imagem gerada com inteligência artificial.</i></sub>
+</p>
+
 Aplicação desktop de mensageria feita com **Flutter**, que conversa com um homeserver **Matrix**. A comunicação com o Matrix é implementada em **Rust**, usando o **Matrix Rust SDK**, e exposta ao Flutter pelo **Flutter Rust Bridge**.
 
 Alvos: Linux, macOS e Windows.
@@ -8,11 +14,14 @@ Alvos: Linux, macOS e Windows.
 
 - Login em um homeserver Matrix, com a opção de lembrar o servidor e botão para mostrar a senha
 - Sessão guardada no cofre do sistema, restaurada ao abrir o app e encerrada no logout
-- Lista de salas ordenada por atividade, com última mensagem, horário e mensagens não lidas
+- Lista de salas ordenada por atividade, com última mensagem, horário, mensagens não lidas e busca pelo nome
 - Conversa com mensagens em tempo real, envio (Enter envia, Shift+Enter quebra linha), reenvio de mensagens que falharam e histórico ao rolar até o topo
+- Cabeçalho da sala com a quantidade de membros e detalhes da sala (participantes e ID)
 - Nova conversa (conversa direta com outro usuário) e convites, com aceitar e recusar
+- Atalhos: Ctrl+K (⌘K) busca, Ctrl+N (⌘N) nova conversa, Esc fecha a conversa
 - Avisos de falta de conexão e de sessão expirada
-- Layout responsivo: lista e conversa lado a lado em janela larga, uma de cada vez em janela estreita
+- Layout responsivo e tema claro e escuro conforme o sistema
+- Executáveis para Linux, Windows e macOS na aba Releases (sem assinatura, veja [Executáveis prontos](#executáveis-prontos-releases))
 - Homeserver Matrix local com Docker, já com usuários e conversas de teste
 
 O escopo e os requisitos estão em [docs/PRD.md](docs/PRD.md), e os diagramas de fluxo em [docs/FLUXOS.md](docs/FLUXOS.md). O enunciado do desafio está em [docs/desafio-tecnico.md](docs/desafio-tecnico.md).
@@ -23,8 +32,6 @@ O escopo e os requisitos estão em [docs/PRD.md](docs/PRD.md), e os diagramas de
 Flutter (Dart)  <-- Flutter Rust Bridge -->  Rust + Matrix SDK  <-- HTTPS -->  Homeserver Matrix
 ```
 
-Não existe back-end próprio. O homeserver Matrix cumpre esse papel, e o código Rust roda dentro do próprio aplicativo.
-
 ## Estrutura do repositório
 
 ```
@@ -33,6 +40,7 @@ Não existe back-end próprio. O homeserver Matrix cumpre esse papel, e o códig
 │   ├── lib/             Código Dart (UI e estado)
 │   ├── rust/            Crate Rust (Matrix SDK + funções expostas ao Dart)
 │   └── rust_builder/    Cargokit: compila o Rust junto com o app em cada sistema
+├── .github/workflows/   CI e geração dos executáveis (Releases)
 ├── docker/synapse/      Configuração extra do homeserver local (dev-overrides.yaml)
 ├── docker-compose.yml   Homeserver Matrix (Synapse) para desenvolvimento
 └── docs/                PRD, fluxos (diagramas) e enunciado do desafio
@@ -65,6 +73,9 @@ Instale uma vez em cada máquina em que for rodar o app.
   cargo install flutter_rust_bridge_codegen --version 2.13.0 --locked
   ```
 
+<details>
+<summary><b>Pacotes por sistema (Linux, macOS e Windows)</b></summary>
+
 **Linux**
 
 ```bash
@@ -83,6 +94,8 @@ sudo apt install clang cmake ninja-build pkg-config libgtk-3-dev libsecret-1-dev
 - Visual Studio 2022 com a carga de trabalho "Desenvolvimento para desktop com C++"
 - Toolchain MSVC do Rust: `rustup default stable-msvc`
 - Mantenha o projeto em um caminho curto e sem acentos (por exemplo `C:\dev\desafio`)
+
+</details>
 
 Confira o ambiente com:
 
@@ -127,26 +140,7 @@ Os usuários ficam `@alice:localhost`, `@bob:localhost`, `@carol:localhost` e `@
 
 ### Conversas de teste
 
-O seed também cria salas com mensagens trocadas entre os usuários, para o app já abrir com conversas, inclusive com mensagens não lidas:
-
-| Sala | Assunto | Participantes | Mensagens |
-| ---- | ------- | ------------- | --------- |
-| Alice e Bob | conversa do dia a dia (futebol) | alice, bob | 6 |
-| Equipe Insight | equipe de back-end (NestJS, JWT, Prisma) | alice, bob, carol, dave | 7 |
-| API de Pedidos | projeto de back-end em NestJS | carol, alice, bob | 4 |
-| Bob e Carol | vôlei | bob, carol | 3 |
-| Almoço de sexta | combinados do almoço | dave, alice, carol | 4 |
-| Futebol de quinta | racha semanal | dave, alice, bob, carol | 6 |
-| Vôlei da turma | treinos de vôlei | carol, alice, bob, dave | 5 |
-| Dúvidas de NestJS | validação com DTOs e pipes | bob, alice, carol, dave | 5 |
-| Churrasco do fim de semana | organização do churrasco | alice, bob, carol, dave | 6 |
-| Filmes e séries | indicações e maratona | carol, alice, dave | 4 |
-| Pipeline e deploy | CI/CD, Docker e Postgres | dave, alice, bob | 4 |
-| Histórico longo | mensagens numeradas, para testar a paginação | alice, bob | 80 |
-
-Entrando como `alice`, aparecem 11 salas; como `bob`, 10; como `carol`, 9; e como `dave`, 8. O seed é idempotente: rodar `docker compose up -d` de novo não duplica nada, e salas que já existem são mantidas. Para recriar tudo do zero, use `docker compose down -v` e suba de novo.
-
-Se você já tinha o Docker rodando de uma versão anterior do repositório, basta `docker compose down` e `docker compose up -d`: a configuração é atualizada e as salas novas são criadas por cima do que já existe. Salas que já existem **não** têm o texto atualizado; para ver as conversas novas desde o início, use `docker compose down -v` e suba de novo (isso apaga os dados do servidor de teste e as sessões salvas no app).
+O seed cria os quatro usuários e 12 salas com mensagens trocadas entre eles, algumas ainda não lidas, para o app já abrir com conversas. Uma delas, "Histórico longo", tem 80 mensagens para testar a paginação. O seed é idempotente: rodar `docker compose up -d` de novo não duplica nada. Para recriar tudo do zero, use `docker compose down -v` e suba de novo (isso apaga os dados do servidor de teste e as sessões salvas no app).
 
 Comandos do dia a dia:
 
@@ -199,6 +193,9 @@ Limites do uso fora do ambiente local: o app não decifra salas criptografadas (
 
 ## Solução de problemas
 
+<details>
+<summary><b>Sintomas e o que verificar</b></summary>
+
 | Sintoma | O que verificar |
 | ------- | --------------- |
 | `docker compose up` falha ou o `curl` não responde | Confira com `docker compose ps -a` e `docker compose logs synapse`. Se a porta 8008 estiver ocupada, use `SYNAPSE_PORT=18008 docker compose up -d` e informe `http://localhost:18008` no app. |
@@ -208,7 +205,11 @@ Limites do uso fora do ambiente local: o app não decifra salas criptografadas (
 | Falha de build no Linux por biblioteca faltando | Instale os pacotes da seção Pré-requisitos (`gtk3` e `libsecret` são os mais esquecidos). |
 | Quer voltar ao estado inicial | `docker compose down -v` apaga o servidor de teste; no app, saia da conta para apagar os dados locais. |
 
+</details>
+
 ## Testes e verificações
+
+São 150 testes Dart (unidade e widget) e 5 testes Rust, mais 4 de integração opcionais.
 
 ```bash
 # em app/
@@ -232,12 +233,12 @@ cargo test -- --ignored --test-threads=1
 
 Dois workflows do GitHub Actions cuidam da compilação, já que o Flutter desktop não compila de um sistema para outro:
 
-- **CI** (`.github/workflows/ci.yml`): a cada push na `main` e em pull requests, roda formatação, `flutter analyze`, `flutter test`, `cargo test` e compila o app em Linux, Windows e macOS.
+- **CI** (`.github/workflows/ci.yml`): quando algo em `app/` muda (push na `main` ou pull request), roda formatação, `flutter analyze`, `flutter test`, `cargo test` e compila o app em Linux, Windows e macOS. Alterações só em documentação não disparam o CI.
 - **Release** (`.github/workflows/release.yml`): ao enviar uma tag `v*`, gera os três executáveis e os publica na aba **Releases**.
 
 ```bash
-git tag v1.0.0
-git push origin v1.0.0
+git tag vX.Y.Z           # use a próxima versão, por exemplo v1.0.2
+git push origin vX.Y.Z
 ```
 
 Também dá para rodar o workflow Release manualmente na aba **Actions**. Nesse caso os arquivos ficam como artefatos da execução, sem criar uma Release.
@@ -245,18 +246,20 @@ Também dá para rodar o workflow Release manualmente na aba **Actions**. Nesse 
 | Sistema | Arquivo | Como abrir |
 | ------- | ------- | ---------- |
 | Windows | `insight-matrix-<versão>-windows-x64.zip` | Extraia e execute `app.exe`. Sem assinatura, o SmartScreen avisa: clique em "Mais informações" e "Executar assim mesmo". |
-| macOS (Apple Silicon) | `insight-matrix-<versão>-macos-arm64.dmg` | Arraste para Aplicativos. Sem assinatura da Apple, o Gatekeeper bloqueia com "não foi aberto". No macOS 15 ou mais novo, abra **Ajustes do Sistema > Privacidade e Segurança**, role até o aviso do Insight Matrix e clique em **Abrir Mesmo Assim**. Ou, no Terminal: `xattr -dr com.apple.quarantine "/Applications/Insight Matrix.app"`. |
+| macOS (Apple Silicon) | `insight-matrix-<versão>-macos-arm64.dmg` | Arraste para Aplicativos. |
 | Linux (x86_64) | `insight-matrix-<versão>-linux-x86_64.AppImage` | `chmod +x` no arquivo e execute. É preciso ter `libsecret` e GTK 3 instalados no sistema. |
 
-Os executáveis não são assinados. O build do macOS é só para Apple Silicon.
+> **Atenção, macOS:** por enquanto, instalar o app gerado no Mac dá problemas. Os executáveis não são assinados com um Apple Developer Team, e o Mac não deixa abrir um aplicativo baixado sem assinatura: o Gatekeeper bloqueia com "não foi aberto". Até haver assinatura, a forma mais segura de rodar no Mac é pelo código-fonte (`flutter run -d macos`).
+
+O build do macOS é só para Apple Silicon.
 
 ## Plataformas
 
 | Sistema | Situação |
 | ------- | -------- |
-| Linux   | Desenvolvido e testado |
-| macOS   | Testado, inclusive contra o `matrix.org` |
-| Windows | Configurado, ainda não testado |
+| Linux   | Desenvolvido e testado, inclusive contra o `matrix.org`. |
+| macOS   | Testado pelo código-fonte, inclusive contra o `matrix.org`. O executável das Releases não é assinado e exige liberação manual |
+| Windows | O CI compila o app, testado contra o `matrix.org`. |
 
 O Flutter desktop não compila de um sistema para outro: para rodar no macOS é preciso estar em um Mac, e no Windows, em um Windows.
 
@@ -269,9 +272,9 @@ O Flutter desktop não compila de um sistema para outro: para rodar no macOS é 
 
 ## Limitações conhecidas
 
-- **Windows** configurado, mas ainda não executado.
+- **macOS:** os executáveis das Releases não são assinados, e o Mac bloqueia a instalação sem liberação manual.
 - **Homeservers:** testado no Synapse local e no `matrix.org`; outros servidores não foram testados.
-- **Criptografia ponta a ponta** não suportada: mensagens de salas criptografadas aparecem como "Mensagem criptografada".
+- **Criptografia ponta a ponta** não suportada, mensagens de salas criptografadas aparecem como "Mensagem criptografada".
 - **Escopo das mensagens:** só texto simples, em conversas diretas 1:1.
 
 A lista completa está na seção 8 do [PRD](docs/PRD.md), e o plano de evolução, na seção 9.

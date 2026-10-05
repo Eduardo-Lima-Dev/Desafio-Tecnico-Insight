@@ -1,6 +1,6 @@
 # Especificação Técnica de Requisitos (PRD)
 
-Este documento descreve os requisitos funcionais, não funcionais, a arquitetura técnica, as decisões técnicas e as limitações do cliente de mensageria desktop com Matrix, baseado no desafio técnico (ver [desafio-tecnico.md](desafio-tecnico.md)). Os diagramas de fluxo estão em [FLUXOS.md](FLUXOS.md).
+Este documento descreve os requisitos funcionais, não funcionais, a arquitetura técnica, as decisões técnicas e as limitações do cliente de mensageria desktop com Matrix, baseado no [desafio-tecnico.md](desafio-tecnico.md). Os diagramas de fluxo estão em [FLUXOS.md](FLUXOS.md).
 
 ---
 
@@ -20,6 +20,8 @@ Cliente de mensageria desktop em Flutter, com a comunicação Matrix em Rust (Ma
 | Ponte Dart <-> Rust | Flutter Rust Bridge 2.13.0                                                 |
 | Persistência local  | Sessão e senha do banco no cofre do sistema (`flutter_secure_storage`), servidor salvo em `shared_preferences` e cache do SDK em SQLite, ver DT-002 |
 | Plataformas         | Linux, macOS, Windows                                                      |
+| Janela e tema       | `window_manager` (tamanho inicial e mínimo da janela); fonte Inter embutida; tema claro e escuro conforme o sistema |
+| CI e distribuição   | GitHub Actions: CI (análise, testes e build nos três sistemas) e Release (executáveis), ver DT-009 |
 | Testes              | `flutter_test` (unidade e widget) e `cargo test` (unidade e integração opcional contra o Synapse local) |
 | Qualidade estática  | `very_good_analysis` no Dart e `cargo clippy` no Rust, ver DT-004          |
 | Homeserver de teste | Synapse via Docker Compose                                                 |
@@ -46,12 +48,14 @@ Os identificadores (RF-xx) são estáveis e não seguem a ordem de leitura: os m
 
 | ID    | Requisito                                                                                      |
 | ----- | ---------------------------------------------------------------------------------------------- |
-| RF-07 | O app lista as salas em que o usuário participa, com avatar, nome e última mensagem.           |
+| RF-07 | O app lista as salas em que o usuário participa, com avatar, nome, última mensagem e horário (hora no mesmo dia, "Ontem", dia da semana na última semana, ou dd/mm). |
 | RF-08 | A lista é ordenada pela atividade mais recente.                                                |
 | RF-09 | A lista se atualiza sozinha quando chegam novas mensagens ou salas.                            |
 | RF-10 | O usuário seleciona uma sala para abrir a conversa.                                            |
 | RF-11 | Salas com mensagens não lidas são destacadas na lista, com um indicador de não lidas.          |
-| RF-22 | O avatar de cada sala é um círculo com a inicial do nome. O app não carrega imagens de avatar. |
+| RF-22 | O avatar de cada sala é um círculo com a inicial do nome, em uma cor escolhida a partir do identificador da sala (a mesma sala tem sempre a mesma cor). O app não carrega imagens de avatar. |
+| RF-28 | A lista tem um campo "Buscar conversas" que filtra as salas pelo nome, sem diferenciar maiúsculas nem acentos. |
+| RF-29 | O cabeçalho da conversa mostra o nome da sala e a quantidade de membros. O menu do cabeçalho abre os detalhes da sala (participantes e ID) e copia o ID da sala. |
 
 ### 3.3. Mensagens
 
@@ -76,22 +80,7 @@ Os identificadores (RF-xx) são estáveis e não seguem a ordem de leitura: os m
 | RF-25 | Quando nenhuma sala está selecionada, o painel da conversa mostra a mensagem "Selecione uma sala". |
 | RF-26 | O usuário cria uma conversa direta pelo botão "Nova conversa", informando o identificador de outro usuário (por exemplo `@bob:localhost` ou só `bob`). Se já existir uma conversa direta com essa pessoa, ela é reaberta em vez de duplicada. |
 | RF-27 | Convites recebidos aparecem em uma seção "Convites" no topo da lista, com as ações Aceitar e Recusar. Aceitar abre a conversa. |
-
-### 3.5. Camada Rust (exposta ao Dart)
-
-O código Rust expõe ao Flutter, via Flutter Rust Bridge:
-
-| Capacidade             | Descrição                                                                 |
-| ---------------------- | ------------------------------------------------------------------------- |
-| Login / logout         | Autentica e encerra a sessão no homeserver.                               |
-| Restaurar sessão       | Reconstrói o cliente a partir da sessão persistida.                       |
-| Sync                   | Mantém a sincronização, emite o status da conexão e detecta token recusado. |
-| Salas                  | Lista as salas ordenadas por atividade, com última mensagem e não lidas.  |
-| Conversa               | Abre e fecha a conversa de uma sala e entrega as mensagens em tempo real. |
-| Envio                  | Envia texto e reenvia mensagens que falharam, pela fila de envio do SDK.  |
-| Histórico              | Carrega mensagens antigas, em páginas, e informa quando chegou ao início. |
-| Nova conversa          | Cria uma conversa direta 1:1 com outro usuário, sem duplicar.             |
-| Convites               | Lista os convites recebidos e permite aceitar ou recusar.                 |
+| RF-30 | Atalhos de teclado: Ctrl+K (⌘K no macOS) foca a busca, Ctrl+N (⌘N) abre "Nova conversa" e Esc fecha a conversa aberta ou limpa a busca. |
 
 ---
 
@@ -122,33 +111,26 @@ O código Rust expõe ao Flutter, via Flutter Rust Bridge:
 
 ## 5. Interface e Fluxos
 
-### Referência visual
+O app tem três telas, com tema claro e escuro conforme o sistema e a fonte Inter. A janela abre em 1100 x 720 e não encolhe abaixo de 480 x 600.
 
-O wireframe abaixo é a base de estrutura das telas: Login, lista de Salas e Chat (lista de salas à esquerda e conversa à direita). É uma referência de organização e fluxo, não uma especificação visual final.
+| Tela | Conteúdo | Requisitos |
+| ---- | -------- | ---------- |
+| Login | Servidor, usuário e senha, com a opção de salvar o servidor | RF-01 a RF-03, RF-21 |
+| Lista de salas | Busca, "Nova conversa", convites, salas por atividade e rodapé com o usuário e o botão Sair | RF-07 a RF-11, RF-26 a RF-28 |
+| Conversa | Cabeçalho da sala, mensagens com histórico e campo de envio | RF-10, RF-12 a RF-17, RF-29 |
 
-Ele foi desenhado tendo o **Telegram** como inspiração: lista de conversas em uma coluna e conversa aberta ao lado, com as mensagens próprias à direita e as dos outros à esquerda.
+A estrutura parte do [wireframe](img/wireframe.png) inicial (lista à esquerda, conversa à direita, inspirado no Telegram). O visual atual evoluiu a partir dele e vale como referência de organização, não de aparência.
 
-![Wireframe das telas: Login, Salas e Chat](img/wireframe.png)
+Decisões de interface:
 
-| Tela do wireframe | Papel no app | Requisitos |
-| ----------------- | ------------ | ---------- |
-| Login | Servidor, usuário e senha, com a opção de salvar o servidor | RF-01 a RF-03 |
-| Salas | Lista de conversas em tela cheia, usada quando a janela é estreita | RF-07 a RF-11 |
-| Chat | Lista de salas à esquerda e conversa à direita, usada quando a janela é larga | RF-10, RF-12 a RF-17 |
+- **Layout responsivo (RF-24):** janela larga mostra salas e conversa lado a lado; janela estreita mostra só a lista, e a conversa abre por cima dela, com a seta de voltar.
+- **Usuário e logout (RF-06):** o rodapé da lista mostra o usuário logado (avatar, nome e identificador completo) e o botão **Sair**.
+- **Mensagens:** cada mensagem mostra o horário, e as de outros participantes mostram o nome de quem enviou acima da bolha (RF-12, RF-23). As próprias mostram o estado: enviando, enviada ou falhou (RF-14).
+- **Nenhuma sala selecionada:** o painel da conversa mostra "Selecione uma sala" (RF-25).
+- **Avatares só com letras (RF-22):** não são carregadas imagens.
+- **Carregamento, vazio e offline** seguem o RF-18 e o RF-19. O aviso de conexão ("Sem conexão. Tentando reconectar..." ou "Não foi possível sincronizar." com o botão "Tentar de novo") fica fixo no topo da tela principal.
 
-Decisões de interface que complementam o wireframe:
-
-- **Layout responsivo (RF-24):** janela larga mostra as duas colunas (salas e conversa); janela estreita mostra só a lista, e a conversa abre por cima dela.
-- **Usuário e logout (RF-06):** o rodapé da lista de salas mostra o usuário logado (avatar com a inicial, nome e identificador completo) e o botão **Sair** com ícone de logout. Em janela larga o rodapé fica sempre visível; em janela estreita, ele aparece na tela da lista.
-- **Lista de salas:** cada item mostra o avatar, o nome, a última mensagem e, quando houver, um indicador de mensagens não lidas (RF-07, RF-11).
-- **Mensagens:** cada mensagem mostra o horário, e as de outros participantes mostram o nome de quem enviou acima da bolha (RF-12, RF-23). As mensagens próprias mostram o estado: enviando, enviada ou falhou (RF-14).
-- **Nenhuma sala selecionada:** o painel da conversa mostra a mensagem "Selecione uma sala" (RF-25).
-- **Avatares só com letras (RF-22):** não são carregadas imagens. O avatar é um círculo com a inicial do nome (por exemplo, "Alice" aparece como "A").
-- **Estados de carregamento, vazio e offline** seguem o RF-18 e o RF-19. O aviso de conexão ("Sem conexão. Tentando reconectar..." ou "Não foi possível sincronizar." com o botão "Tentar de novo") fica fixo no topo da tela principal, acima da lista e da conversa, tanto em janela larga quanto estreita.
-
-### Fluxos
-
-Os diagramas de fluxo (atividade, estados e sequência) e o diagrama de componentes ficam no documento [FLUXOS.md](FLUXOS.md), organizados por tipo de diagrama.
+Os diagramas de fluxo, estados e sequência estão em [FLUXOS.md](FLUXOS.md).
 
 ---
 
@@ -212,11 +194,20 @@ Os diagramas de fluxo (atividade, estados e sequência) e o diagrama de componen
 
 ---
 
+### DT-009 — Tema próprio, janela e distribuição por GitHub Actions
+
+- **Contexto:** o Flutter desktop não compila de um sistema para outro, e um avaliador precisa conseguir abrir o app sem montar o ambiente. A interface também precisava de aparência consistente nos três sistemas.
+- **Decisão:** tema próprio (claro e escuro conforme o sistema) com a fonte Inter embutida, para o texto ficar igual em todos os sistemas, e `window_manager` para definir título, tamanho inicial e tamanho mínimo da janela. Dois workflows do GitHub Actions: **CI**, que roda só quando algo em `app/` muda e executa formatação, análise, testes e o build em Linux, Windows e macOS; e **Release**, que ao receber uma tag `v*` gera um AppImage (Linux x86_64), um zip (Windows x64) e um dmg (macOS Apple Silicon) e os publica na aba Releases. O CI usa o Flutter 3.47.6, enquanto o desenvolvimento local usou o 3.44.4.
+- **Alternativas consideradas:** usar as fontes do sistema (aparência diferente em cada plataforma); distribuir só o código-fonte (exige o ambiente completo para quem avalia).
+- **Consequências:** os executáveis **não são assinados**. No macOS, o Gatekeeper impede abrir o app baixado sem passos manuais (veja o README), e por isso a instalação do app gerado no Mac ainda traz problemas até haver assinatura com um Apple Developer Team. No Windows, o SmartScreen avisa. O build do macOS é só para Apple Silicon. O CI garante que o app compila nos três sistemas, mas não que ele foi executado no Windows.
+
+---
+
 ## 7. Configuração e Execução
 
 O passo a passo (pré-requisitos por sistema, homeserver local, execução, testes e regeneração da ponte) está no [README](../README.md).
 
-Versões usadas no desenvolvimento: Flutter 3.44.4 (Dart 3.12), Rust 1.99.0 e `flutter_rust_bridge_codegen` 2.13.0, que precisa ser a mesma versão do pacote `flutter_rust_bridge`.
+Versões usadas no desenvolvimento: Flutter 3.44.4 (Dart 3.12), Rust 1.99.0 e `flutter_rust_bridge_codegen` 2.13.0, que precisa ser a mesma versão do pacote `flutter_rust_bridge`. Os executáveis prontos e o CI estão descritos na DT-009 e no README.
 
 Homeserver de testes: Synapse local, subido por `docker compose up -d`, com os usuários `alice`, `bob`, `carol` e `dave` (senha `senha123`) e doze salas de teste, uma delas com 80 mensagens para exercitar a paginação.
 
@@ -224,17 +215,25 @@ Homeserver de testes: Synapse local, subido por `docker compose up -d`, com os u
 
 ## 8. Limitações e Itens Não Concluídos
 
-- Não são carregadas imagens: os avatares das salas são só a inicial do nome (RF-22), e não há envio nem exibição de anexos.
-- Plataformas: o desenvolvimento e os testes manuais foram feitos no Linux, e o app também foi executado no macOS sem ajustes além do Keychain (DT-002). O Windows está configurado (ícones e dependências), mas ainda não foi executado.
-- Homeservers: o app foi testado no Synapse local do Docker e, manualmente no macOS, no `matrix.org`, com uma conta criada com e-mail e senha. Lá funcionaram o login, a sincronização das salas e a criação de uma conversa direta com outro usuário. Outros servidores não foram testados; o app usa o sliding sync, que o servidor precisa suportar. Contas que entram só por login único (SSO) não são suportadas, porque o app autentica por senha.
-- Salas com criptografia ponta a ponta: o app não decifra mensagens, e mostra "Mensagem criptografada" no lugar do texto. Na lista de salas, a última mensagem de uma sala criptografada aparece como "Sem mensagens".
-- Só é possível criar conversas diretas 1:1 (sem grupos, sem busca de usuários); as conversas criadas pelo app não são criptografadas.
-- Só é possível enviar texto simples: não há edição, exclusão, resposta nem anexos.
+**Escopo**
+
+- Só é possível criar conversas diretas 1:1, sem grupos e sem busca de usuários.
+- Só é possível enviar texto simples: não há edição, exclusão, resposta nem anexos. Imagens, arquivos, enquetes e demais tipos recebidos aparecem como "Mensagem não suportada", e os avatares são só letras (RF-22).
 - O reenvio de uma mensagem que falhou é manual (toque no ícone de erro); o app não tenta de novo sozinho.
 - O contador de não lidas considera apenas as últimas 20 mensagens de cada sala.
-- Só mensagens de texto são exibidas; imagens, arquivos, enquetes e demais tipos aparecem como "Mensagem não suportada".
-- Dependências: o `cargo audit` não aponta vulnerabilidades. Restam três avisos de pacotes sem manutenção (`adler`, `anymap2` e `derivative`), vindos de dependências transitivas que o projeto não controla, para rever quando elas forem atualizadas. No Dart, as dependências de execução estão atualizadas; só `very_good_analysis` (salto de versão principal) e `build_runner` têm versão mais nova, e ficaram como estão para não trazer regras de lint novas perto da entrega.
 - Uma conversa recém-criada é selecionada na hora, mas só aparece na lista quando a sincronização a traz; até lá, o painel mostra "Selecione uma sala".
+
+**Segurança**
+
+- Salas com criptografia ponta a ponta: o app não decifra mensagens, e mostra "Mensagem criptografada" no lugar do texto. Na lista, a última mensagem de uma sala criptografada aparece como "Sem mensagens". As conversas criadas pelo app não são criptografadas.
+- Contas que entram só por login único (SSO) não são suportadas, porque o app autentica por senha.
+- Os executáveis das Releases não são assinados (DT-009). **No macOS, a instalação do app gerado ainda traz problemas:** o Gatekeeper bloqueia um app sem assinatura da Apple e é preciso liberá-lo manualmente (passos no README). No Windows, o SmartScreen avisa. O build do macOS é só para Apple Silicon.
+- Dependências: o `cargo audit` não aponta vulnerabilidades. Restam três avisos de pacotes sem manutenção (`adler`, `anymap2` e `derivative`), vindos de dependências transitivas que o projeto não controla. No Dart, as dependências de execução estão atualizadas; só `very_good_analysis` (salto de versão principal) e `build_runner` têm versão mais nova, e ficaram como estão para não trazer regras de lint novas perto da entrega.
+
+**Verificação**
+
+- Plataformas: o desenvolvimento e os testes manuais foram feitos no Linux, e o app também foi executado no macOS a partir do código-fonte, sem ajustes além do Keychain (DT-002). No Windows, o CI só compila o app; ele ainda não foi executado.
+- Homeservers: o app foi testado no Synapse local do Docker e, manualmente no macOS, no `matrix.org`, com uma conta criada com e-mail e senha (login, sincronização das salas e criação de uma conversa direta). Outros servidores não foram testados; o servidor precisa suportar o sliding sync.
 
 ---
 
@@ -248,4 +247,3 @@ Em ordem de prioridade, com o que cada passo exige:
 4. **Mais ações na mensagem.** Editar, apagar, responder e reações. O Timeline do SDK já expõe essas operações.
 5. **Várias contas.** Trocar os módulos globais do Rust por um objeto opaco do cliente (DT-008). A mudança fica restrita ao Rust e aos repositórios.
 6. **Notificações do sistema e reenvio automático.** Avisar de mensagens novas com a janela em segundo plano e tentar de novo, sozinho, as mensagens que falharam.
-7. **Verificação em todas as plataformas.** Executar e testar no Windows e em mais homeservers, e automatizar `analyze`, `test`, `clippy` e `cargo test` em integração contínua.
