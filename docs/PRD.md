@@ -40,7 +40,7 @@ Os números dos requisitos não mudam, então a ordem de leitura nem sempre é s
 | ID    | Requisito                                                                                              |
 | ----- | ------------------------------------------------------------------------------------------------------ |
 | <a id="rf-01"></a>RF-01 | O usuário informa homeserver, usuário e senha para autenticar. O campo de senha começa oculto e tem um botão (ícone de olho) para mostrá-la ou ocultá-la.                                         |
-| <a id="rf-02"></a>RF-02 | O homeserver informado é validado (URL válida e servidor Matrix alcançável) antes do login.            |
+| <a id="rf-02"></a>RF-02 | O endereço do homeserver é validado antes do login: precisa ser uma URL válida, com HTTPS (`http` só para `localhost`), e sem usuário e senha embutidos. Se o servidor não puder ser alcançado, o login falha com a mensagem "Não foi possível conectar ao servidor". |
 | <a id="rf-03"></a>RF-03 | Após login bem-sucedido, a sessão é persistida de forma segura.                                        |
 | <a id="rf-04"></a>RF-04 | Ao abrir o app, a sessão salva é restaurada automaticamente, sem pedir login de novo.                  |
 | <a id="rf-05"></a>RF-05 | Se o servidor deixar de aceitar o token da sessão, o app apaga os dados locais e volta ao login com o aviso "Sua sessão expirou". Isso é detectado na restauração ou durante a sincronização. Uma falha de restauração por outro motivo volta ao login sem apagar os dados salvos. |
